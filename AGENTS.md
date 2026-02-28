@@ -52,7 +52,7 @@ Scrapers exist but are **not finalized**. The data in the scraper folders is pre
 ## Tech Stack
 
 - **Frontend**: To be built (greenfield) — likely Next.js / React
-- **Backend / Database**: Supabase (PostgreSQL) — project connected, no tables yet
+- **Backend / Database**: Supabase (PostgreSQL) — schema deployed (`create_initial_schema`)
 - **Data Pipeline**: Python scrapers (LMU + TUM) — work in progress, not yet finalized
 - **Hosting**: TBD
 
@@ -83,19 +83,47 @@ Scrapers exist but are **not finalized**. The data in the scraper folders is pre
 - [ ] Calendar view for visit scheduling (who goes where, when)
 - [ ] Analytics: which programs/lectures yield the best recruitment results
 
-## Architecture Decisions (Pending)
+## Architecture Decisions
 
-These decisions should be made before Phase 1 implementation:
+Some decisions are resolved; others are still pending.
 
-1. **Frontend framework** — Next.js App Router vs Pages Router vs other
-2. **Styling approach** — Tailwind, CSS Modules, shadcn/ui, etc.
-3. **Data import strategy** — One-time script vs ongoing sync pipeline
-4. **Auth model** — Club-internal only (simple auth) vs multi-team support
-5. **Schema design** — Professor as first-class entity (critical for dedup and outreach tracking)
+1. **Frontend framework** — Next.js App Router vs Pages Router vs other *(pending)*
+2. **Styling approach** — Tailwind, CSS Modules, shadcn/ui, etc. *(pending)*
+3. **Data import strategy** — One-time script vs ongoing sync pipeline *(pending)*
+4. **Auth model** — **RESOLVED**: Supabase Auth with `profiles` table. Club-internal only.
+5. **Schema design** — **RESOLVED**: Professor as first-class entity scoped per university. Campaigns model per-semester tracking. See Database Schema below.
+
+## Database Schema
+
+12 tables in Supabase PostgreSQL. Migration: `create_initial_schema`.
+
+### Tables
+
+| Table | Purpose |
+|-------|---------|
+| `universities` | LMU, TUM, and future institutions |
+| `faculties` | Faculty groupings within a university (nullable for TUM programs) |
+| `study_programs` | Degree programs (BSc Physics, MSc Informatik, etc.) |
+| `lectures` | Individual courses — type, schedule, semester, notes, starred flag |
+| `professors` | First-class entity scoped per university — name, email, external_id for scraper dedup |
+| `lecture_professors` | Many-to-many: which professors teach which lectures |
+| `lecture_study_programs` | Many-to-many: which lectures belong to which programs (cross-listing) |
+| `profiles` | Club member profiles (mirrors auth.users id) — display_name |
+| `campaigns` | Per-semester outreach campaigns (WiSe 2025/26, SoSe 2026, ...) |
+| `campaign_professors` | Outreach status per professor per campaign (not_contacted → emailed → confirmed/declined) |
+| `campaign_professor_lectures` | Which specific lectures were mentioned in each outreach |
+| `visit_assignments` | Who from the club visits which lecture in a campaign |
+
+### Key Design Decisions
+- **Professor dedup**: One professor row per university. Contacted once per campaign regardless of how many lectures they teach.
+- **Campaign model**: All outreach status lives in `campaign_professors` (not on the professor). New semester = new campaign. Full history preserved automatically.
+- **Outreach statuses**: `not_contacted`, `emailed`, `confirmed`, `declined`
+- **Source tracking**: `external_id` + `source` on lectures and professors enables clean scraper re-imports without duplicates
+- **Profiles trigger**: `handle_new_user()` auto-creates a profile row when a club member signs up via Supabase Auth
 
 ## Conventions
 
 - Database: Supabase (PostgreSQL), managed via MCP tooling
-- No tables exist yet — schema is a blank slate
+- Schema is deployed — 12 tables via migration `create_initial_schema`
 - Scraped data is the source of truth for initial content
 - Frontend repo is at `frontend/`, scrapers are sibling directories
