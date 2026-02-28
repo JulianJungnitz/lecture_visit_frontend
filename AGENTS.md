@@ -95,7 +95,7 @@ Some decisions are resolved; others are still pending.
 
 ## Database Schema
 
-12 tables in Supabase PostgreSQL. Migration: `create_initial_schema`.
+13 tables in Supabase PostgreSQL. Migrations: `create_initial_schema`, `add_lecture_schedules_and_refinements`.
 
 ### Tables
 
@@ -108,11 +108,12 @@ Some decisions are resolved; others are still pending.
 | `professors` | First-class entity scoped per university — name, email, external_id for scraper dedup |
 | `lecture_professors` | Many-to-many: which professors teach which lectures |
 | `lecture_study_programs` | Many-to-many: which lectures belong to which programs (cross-listing) |
-| `profiles` | Club member profiles (mirrors auth.users id) — display_name |
+| `profiles` | Club member profiles (mirrors auth.users id) — display_name, is_admin boolean |
 | `campaigns` | Per-semester outreach campaigns (WiSe 2025/26, SoSe 2026, ...) |
 | `campaign_professors` | Outreach status per professor per campaign (not_contacted → emailed → confirmed/declined) |
 | `campaign_professor_lectures` | Which specific lectures were mentioned in each outreach |
-| `visit_assignments` | Who from the club visits which lecture in a campaign |
+| `visit_assignments` | Who from the club visits which lecture in a campaign — scheduled_for timestamp |
+| `lecture_schedules` | Multiple schedule slots per lecture (day/time/location) with FK to lectures |
 
 ### Key Design Decisions
 - **Professor dedup**: One professor row per university. Contacted once per campaign regardless of how many lectures they teach.
@@ -120,10 +121,13 @@ Some decisions are resolved; others are still pending.
 - **Outreach statuses**: `not_contacted`, `emailed`, `confirmed`, `declined`
 - **Source tracking**: `external_id` + `source` on lectures and professors enables clean scraper re-imports without duplicates
 - **Profiles trigger**: `handle_new_user()` auto-creates a profile row when a club member signs up via Supabase Auth
+- **Schedule format**: `lecture_schedules` stores structured schedule data. `day_time` uses format "MO 10:00 - 12:00"; `frequency` uses "WEEKLY 13.10.2025 - 06.02.2026" or "SINGLE 10.01.2026". A `location` text field and `room_url` link are also stored. The raw `schedule` and `location` fields on `lectures` remain as scraper fallback.
+- **Admin roles**: `profiles.is_admin` boolean controls club member role management
+- **Visit scheduling**: `visit_assignments.scheduled_for` timestamp records when the visit is planned; the `status` field tracks whether the visit actually happened
 
 ## Conventions
 
 - Database: Supabase (PostgreSQL), managed via MCP tooling
-- Schema is deployed — 12 tables via migration `create_initial_schema`
+- Schema is deployed — 13 tables via migrations `create_initial_schema` and `add_lecture_schedules_and_refinements`
 - Scraped data is the source of truth for initial content
 - Frontend repo is at `frontend/`, scrapers are sibling directories
