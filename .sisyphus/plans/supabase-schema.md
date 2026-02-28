@@ -63,10 +63,10 @@ Create all 12 database tables, 3 enum types, indexes, constraints, and the profi
 - Verification queries confirming structure
 
 ### Definition of Done
-- [ ] `supabase_list_tables` returns exactly 12 tables
-- [ ] All FK relationships verified via information_schema query
-- [ ] All enum types verified with correct values
-- [ ] Smoke test: full insert chain across all 12 tables + cascade delete succeeds
+- [x] `supabase_list_tables` returns exactly 12 tables
+- [x] All FK relationships verified via information_schema query
+- [x] All enum types verified with correct values
+- [x] Smoke test: full insert chain across all 12 tables + cascade delete succeeds
 
 ### Must Have
 - All 12 tables with correct columns and types
@@ -144,7 +144,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ## TODOs
 
-- [ ] 1. Apply initial schema migration
+- [x] 1. Apply initial schema migration
 
   **What to do**:
   Create a single migration via `supabase_apply_migration` named `create_initial_schema` containing:
@@ -284,7 +284,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ---
 
-- [ ] 2. Update AGENTS.md with final schema documentation
+- [x] 2. Update AGENTS.md with final schema documentation
 
   **What to do**:
   - Update the "Architecture Decisions (Pending)" section in `AGENTS.md` to document the resolved schema decisions
@@ -355,7 +355,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ---
 
-- [ ] 3. Verify schema structure (tables, FKs, enums, indexes)
+- [x] 3. Verify schema structure (tables, FKs, enums, indexes)
 
   **What to do**:
   Run verification SQL queries via `supabase_execute_sql` to confirm the migration created everything correctly:
@@ -456,7 +456,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ---
 
-- [ ] 4. Smoke test (insert chain + cascade delete)
+- [x] 4. Smoke test (insert chain + cascade delete)
 
   **What to do**:
   Run a full insert chain across all 12 tables via `supabase_execute_sql` to verify FKs, defaults, and cascades work:
@@ -577,19 +577,19 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Rejection → fix → re-run.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Read the plan end-to-end. For each "Must Have": verify implementation exists (run `supabase_list_tables`, `supabase_execute_sql` to check columns, types, constraints). For each "Must NOT Have": query information_schema for forbidden objects (RLS policies, views, extra tables). Check evidence files exist in `.sisyphus/evidence/`. Compare deliverables against plan.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `supabase_get_advisors(type="security")` and `supabase_get_advisors(type="performance")`. Review results. Flag but ACCEPT RLS warnings (intentionally deferred for club-internal tool). Verify no performance advisories. Check migration was recorded via `supabase_list_migrations`.
   Output: `Security [N advisories] | Performance [N advisories] | Migration [recorded/missing] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high`
+- [x] F3. **Real Manual QA** — `unspecified-high`
   Execute a realistic workflow: insert a university (LMU), a faculty, 2 study programs, 3 lectures, 2 professors, link them via join tables, create a campaign, add outreach entries, create visit assignments. Then query: "show me all lectures for Prof. X", "show me outreach history for Prof. Y across campaigns", "show me all visit assignments for campaign Z". Verify queries return expected results. Clean up all test data.
   Output: `Insert workflow [PASS/FAIL] | Query patterns [N/N pass] | Cleanup [PASS/FAIL] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   Compare AGENTS.md schema documentation (Task 2) against actual database state. Verify 1:1 match: every documented table exists, every documented column exists with correct type, no undocumented tables or columns exist. Check that draft `.sisyphus/drafts/supabase-schema.md` decisions are all reflected in the final schema.
   Output: `Tables [N/N match] | Columns [N/N match] | Undocumented [CLEAN/N items] | VERDICT`
 
@@ -618,14 +618,14 @@ SELECT typname FROM pg_type WHERE typname IN ('outreach_status', 'campaign_statu
 ```
 
 ### Final Checklist
-- [ ] All 12 tables present in public schema
-- [ ] All FK constraints enforced with correct ON DELETE behavior
-- [ ] All enum types created with correct values
-- [ ] All FK columns indexed
-- [ ] Unique constraints on universities.name and campaign_professors(campaign_id, professor_id)
-- [ ] Partial unique indexes on external_id for lectures and professors
-- [ ] Profiles trigger fires on auth.users insert
-- [ ] AGENTS.md updated with schema documentation
-- [ ] No RLS policies created (intentional)
-- [ ] No test data left in database
-- [ ] Supabase advisors reviewed
+- [x] All 12 tables present in public schema
+- [x] All FK constraints enforced with correct ON DELETE behavior
+- [x] All enum types created with correct values
+- [x] All FK columns indexed
+- [x] Unique constraints on universities.name and campaign_professors(campaign_id, professor_id)
+- [x] Partial unique indexes on external_id for lectures and professors
+- [x] Profiles trigger fires on auth.users insert
+- [x] AGENTS.md updated with schema documentation
+- [x] No RLS policies created (intentional)
+- [x] No test data left in database
+- [x] Supabase advisors reviewed
