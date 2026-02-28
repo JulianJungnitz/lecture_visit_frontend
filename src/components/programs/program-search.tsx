@@ -21,9 +21,9 @@ interface ProgramSearchProps {
 
 export function ProgramSearch({ programs }: ProgramSearchProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedUniversity, setSelectedUniversity] = useState('')
-  const [selectedDegreeType, setSelectedDegreeType] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedUniversity, setSelectedUniversity] = useState('__all__')
+  const [selectedDegreeType, setSelectedDegreeType] = useState('__all__')
+  const [selectedCategory, setSelectedCategory] = useState('__all__')
 
   const universities = [...new Set(programs.map((p) => p.university.name))]
   const degreeTypes = [...new Set(programs.map((p) => p.degree_type))]
@@ -32,10 +32,10 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
   const filtered = programs.filter((program) => {
     const matchesSearch = program.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesUniversity =
-      selectedUniversity === '' || program.university.name === selectedUniversity
+      selectedUniversity === '__all__' || program.university.name === selectedUniversity
     const matchesDegreeType =
-      selectedDegreeType === '' || program.degree_type === selectedDegreeType
-    const matchesCategory = selectedCategory === '' || program.category === selectedCategory
+      selectedDegreeType === '__all__' || program.degree_type === selectedDegreeType
+    const matchesCategory = selectedCategory === '__all__' || program.category === selectedCategory
     return matchesSearch && matchesUniversity && matchesDegreeType && matchesCategory
   })
 
@@ -59,7 +59,7 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
             <SelectValue placeholder="University" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All universities</SelectItem>
+            <SelectItem value="__all__">All universities</SelectItem>
             {universities.map((u) => (
               <SelectItem key={u} value={u}>
                 {u}
@@ -73,7 +73,7 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
             <SelectValue placeholder="Degree type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All degrees</SelectItem>
+            <SelectItem value="__all__">All degrees</SelectItem>
             {degreeTypes.map((d) => (
               <SelectItem key={d} value={d}>
                 {d}
@@ -88,7 +88,7 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All categories</SelectItem>
+              <SelectItem value="__all__">All categories</SelectItem>
               {categories.map((c) => (
                 <SelectItem key={c} value={c}>
                   {c}
