@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, BookOpen } from 'lucide-react'
 import { SemesterSelector } from '@/components/semester-selector'
 import { Suspense } from 'react'
 
@@ -16,6 +16,13 @@ export function Sidebar() {
         >
           <GraduationCap className="h-4 w-4" />
           Programs
+        </Link>
+        <Link
+          href="/lectures"
+          className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <BookOpen className="h-4 w-4" />
+          Lectures
         </Link>
       </nav>
       <div className="px-3 py-3 border-t border-border">
