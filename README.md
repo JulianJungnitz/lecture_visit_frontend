@@ -1,6 +1,6 @@
 # Lecture Visit Frontend
 
-Internal coordination tool for planning and managing lecture visit campaigns — short promotional appearances during the first lectures of the semester at Munich universities (LMU & TUM).
+Internal coordination tool for planning and managing lecture visits — short promotional appearances during the first lectures of the semester at Munich universities (LMU & TUM).
 
 ## What It Does
 
@@ -10,7 +10,7 @@ Before each semester, the club identifies which lectures to visit, contacts prof
 
 - **Browse & filter** lectures across universities, study programs, and semesters
 - **Professor-level deduplication** — one outreach per professor, regardless of how many lectures they teach
-- **Outreach tracking** — status per professor per campaign (not contacted → emailed → confirmed / declined)
+- **Outreach tracking** — status per professor per semester (not contacted → emailed → confirmed / declined)
 - **Visit assignments** — who from the club visits which lecture, and when
 - **Email draft generation** — templated outreach with professor/lecture context
 
@@ -19,7 +19,7 @@ Before each semester, the club identifies which lectures to visit, contacts prof
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui (via `class-variance-authority`, `clsx`, `tailwind-merge`)
-- **Backend / DB**: Supabase (PostgreSQL) — 13 tables across 2 migrations
+- **Backend / DB**: Supabase (PostgreSQL) — 11 tables across 5 migrations
 - **Auth**: Supabase Auth with `profiles` table (club-internal only)
 - **Icons**: Lucide React
 
@@ -60,7 +60,7 @@ src/
 
 ## Database
 
-Supabase PostgreSQL with 13 tables covering universities, study programs, lectures, professors, campaigns, and visit assignments. See `AGENTS.md` for the full schema reference.
+Supabase PostgreSQL with 11 tables covering universities, study programs, lectures, professors, outreach, and visit assignments. See `AGENTS.md` for the full schema reference.
 
 ## Related
 

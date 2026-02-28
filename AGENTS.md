@@ -52,7 +52,7 @@ Scrapers exist but are **not finalized**. The data in the scraper folders is pre
 ## Tech Stack
 
 - **Frontend**: To be built (greenfield) — likely Next.js / React
-- **Backend / Database**: Supabase (PostgreSQL) — schema deployed (`create_initial_schema`)
+- **Backend / Database**: Supabase (PostgreSQL) — schema deployed via 5 migrations
 - **Data Pipeline**: Python scrapers (LMU + TUM) — work in progress, not yet finalized
 - **Hosting**: TBD
 
@@ -69,11 +69,11 @@ Scrapers exist but are **not finalized**. The data in the scraper folders is pre
 - [ ] Professor outreach status tracking (not contacted / emailed / confirmed / declined)
 - [ ] Filter professors by: not yet contacted, study program, lecture type, university
 - [ ] Lecture visit assignment (who from the club visits which lecture)
-- [ ] Dashboard: semester campaign overview (contacted, confirmed, pending, visited)
+- [ ] Dashboard: semester overview (contacted, confirmed, pending, visited)
 
 ### Phase 3 — Email & Automation
 - [ ] Email draft generation (first-pass template with professor name, lecture, program context)
-- [ ] Email template management (different templates per campaign or university)
+- [ ] Email template management (different templates per university)
 - [ ] Bulk outreach support (select multiple professors, generate drafts)
 - [ ] History: outreach log per professor across semesters
 
@@ -91,11 +91,11 @@ Some decisions are resolved; others are still pending.
 2. **Styling approach** — Tailwind, CSS Modules, shadcn/ui, etc. *(pending)*
 3. **Data import strategy** — One-time script vs ongoing sync pipeline *(pending)*
 4. **Auth model** — **RESOLVED**: Supabase Auth with `profiles` table. Club-internal only.
-5. **Schema design** — **RESOLVED**: Professor as first-class entity scoped per university. Campaigns model per-semester tracking. See Database Schema below.
+5. **Schema design** — **RESOLVED**: Professor as first-class entity scoped per university. Semester-based outreach tracking via `professor_outreach`. See Database Schema below.
 
 ## Database Schema
 
-13 tables in Supabase PostgreSQL. Migrations: `create_initial_schema`, `add_lecture_schedules_and_refinements`.
+11 tables in Supabase PostgreSQL. Migrations: `create_initial_schema`, `add_lecture_schedules_and_refinements`, `add_professor_gender`, `remove_duplicate_schedule_location_from_lectures`, `replace_campaigns_with_semester_enum_and_outreach`.
 
 ### Tables
 
@@ -104,30 +104,30 @@ Some decisions are resolved; others are still pending.
 | `universities` | LMU, TUM, and future institutions |
 | `faculties` | Faculty groupings within a university (nullable for TUM programs) |
 | `study_programs` | Degree programs (BSc Physics, MSc Informatik, etc.) |
-| `lectures` | Individual courses — type, schedule, semester, notes, starred flag |
-| `professors` | First-class entity scoped per university — name, email, external_id for scraper dedup |
+| `lectures` | Individual courses — type, semester (enum), notes, starred flag |
+| `professors` | First-class entity scoped per university — name, email, gender, external_id for scraper dedup |
 | `lecture_professors` | Many-to-many: which professors teach which lectures |
 | `lecture_study_programs` | Many-to-many: which lectures belong to which programs (cross-listing) |
 | `profiles` | Club member profiles (mirrors auth.users id) — display_name, is_admin boolean |
-| `campaigns` | Per-semester outreach campaigns (WiSe 2025/26, SoSe 2026, ...) |
-| `campaign_professors` | Outreach status per professor per campaign (not_contacted → emailed → confirmed/declined) |
-| `campaign_professor_lectures` | Which specific lectures were mentioned in each outreach |
-| `visit_assignments` | Who from the club visits which lecture in a campaign — scheduled_for timestamp |
+| `professor_outreach` | Outreach status per professor per semester (not_contacted → emailed → confirmed/declined) |
+| `visit_assignments` | Who from the club visits which lecture — semester, scheduled_for timestamp |
 | `lecture_schedules` | Multiple schedule slots per lecture (day/time/location) with FK to lectures |
 
 ### Key Design Decisions
-- **Professor dedup**: One professor row per university. Contacted once per campaign regardless of how many lectures they teach.
-- **Campaign model**: All outreach status lives in `campaign_professors` (not on the professor). New semester = new campaign. Full history preserved automatically.
+- **Professor dedup**: One professor row per university. Contacted once per semester regardless of how many lectures they teach.
+- **Semester model**: `semester_type` enum (e.g. `WiSe 2026/27`, `SoSe 2026`) used on `lectures`, `professor_outreach`, and `visit_assignments`. New semesters added via `ALTER TYPE semester_type ADD VALUE`.
+- **Outreach model**: `professor_outreach` table keyed by `(professor_id, semester)`. Replaces the old 3-table campaigns system. Stores outreach status, which lectures were mentioned (uuid array), who contacted them, and when.
 - **Outreach statuses**: `not_contacted`, `emailed`, `confirmed`, `declined`
-- **Source tracking**: `external_id` + `source` on lectures and professors enables clean scraper re-imports without duplicates
+- **Professor gender**: `professor_gender` enum (`male`, `female`, `other`, `unknown`) for email salutations (Herr/Frau Prof.)
+- **Source tracking**: `external_id` + `source` on professors, `external_id` on lectures — enables clean scraper re-imports without duplicates
 - **Profiles trigger**: `handle_new_user()` auto-creates a profile row when a club member signs up via Supabase Auth
-- **Schedule format**: `lecture_schedules` stores structured schedule data. `day_time` uses format "MO 10:00 - 12:00"; `frequency` uses "WEEKLY 13.10.2025 - 06.02.2026" or "SINGLE 10.01.2026". A `location` text field and `room_url` link are also stored. The raw `schedule` and `location` fields on `lectures` remain as scraper fallback.
+- **Schedule format**: `lecture_schedules` stores structured schedule data. `day_time` uses format "MO 10:00 - 12:00"; `frequency` uses "WEEKLY 13.10.2025 - 06.02.2026" or "SINGLE 10.01.2026". A `location` text field and `room_url` link are also stored.
 - **Admin roles**: `profiles.is_admin` boolean controls club member role management
 - **Visit scheduling**: `visit_assignments.scheduled_for` timestamp records when the visit is planned; the `status` field tracks whether the visit actually happened
 
 ## Conventions
 
 - Database: Supabase (PostgreSQL), managed via MCP tooling
-- Schema is deployed — 13 tables via migrations `create_initial_schema` and `add_lecture_schedules_and_refinements`
+- Schema is deployed — 11 tables via migrations `create_initial_schema`, `add_lecture_schedules_and_refinements`, `add_professor_gender`, `remove_duplicate_schedule_location_from_lectures`, `replace_campaigns_with_semester_enum_and_outreach`, `trim_semester_enum_start_from_sose_2026`
 - Scraped data is the source of truth for initial content
 - Frontend repo is at `frontend/`, scrapers are sibling directories
