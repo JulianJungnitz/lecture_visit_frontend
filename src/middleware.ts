@@ -36,15 +36,13 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect all dashboard routes — redirect to login if not authenticated
-  const isDashboardRoute =
-    request.nextUrl.pathname.startsWith('/programs') ||
-    request.nextUrl.pathname.startsWith('/lectures') ||
-    request.nextUrl.pathname.startsWith('/professors') ||
-    request.nextUrl.pathname.startsWith('/outreach') ||
-    request.nextUrl.pathname.startsWith('/visits')
+  // Allow public routes (auth pages, landing page assets)
+  const isPublicRoute =
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname === '/'
 
-  if (!user && isDashboardRoute) {
+  // Redirect unauthenticated users to login
+  if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return NextResponse.redirect(url)

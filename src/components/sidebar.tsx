@@ -1,9 +1,12 @@
 import Link from 'next/link'
-import { GraduationCap, BookOpen } from 'lucide-react'
+import { GraduationCap, BookOpen, User } from 'lucide-react'
 import { SemesterSelector } from '@/components/semester-selector'
+import { SignOutButton } from '@/components/sign-out-button'
+import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
-
-export function Sidebar() {
+export async function Sidebar() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 bg-white/80 backdrop-blur-md shadow-[1px_0_0_0_rgba(0,0,0,0.06)] flex flex-col z-20">
       <div className="px-4 py-4 flex items-center gap-2.5">
@@ -36,6 +39,19 @@ export function Sidebar() {
           <SemesterSelector />
         </Suspense>
       </div>
+      {user && (
+        <div className="px-4 py-3 border-t border-black/[0.06]">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-black/[0.06]">
+              <User className="h-3.5 w-3.5 text-muted-foreground" />
+            </div>
+            <span className="text-xs text-foreground truncate" title={user.email}>
+              {user.email}
+            </span>
+          </div>
+          <SignOutButton />
+        </div>
+      )}
     </aside>
   )
 }
