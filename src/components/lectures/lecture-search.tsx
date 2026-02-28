@@ -145,7 +145,7 @@ export function LectureSearch({
               href={`/lectures/${lecture.id}`}
               className="group block"
             >
-              <div className="rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-accent/50">
+              <div className="rounded-xl border border-black/[0.06] bg-white px-4 py-3 transition-all duration-200 hover:shadow-sm hover:border-black/[0.1]">
                 <div className="flex items-center gap-2 flex-wrap">
                   {lecture.is_starred && (
                     <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500 shrink-0" />

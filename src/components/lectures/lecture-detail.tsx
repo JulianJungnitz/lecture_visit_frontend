@@ -94,7 +94,7 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
             {professors.map(prof => {
               const salutation = getSalutation(prof.gender)
               return (
-                <div key={prof.id} className="rounded-lg border border-border p-4">
+                <div key={prof.id} className="rounded-xl border border-black/[0.06] p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
@@ -158,7 +158,7 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
             icon={Calendar}
           />
         ) : (
-          <div className="rounded-md border border-border overflow-hidden">
+          <div className="rounded-xl border border-black/[0.06] overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>

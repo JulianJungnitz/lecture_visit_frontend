@@ -5,20 +5,20 @@ export default function Loading() {
     <div className="animate-fade-in-up">
       {/* Header skeleton */}
       <div className="mb-6">
-        <Skeleton className="h-8 w-48 mb-2" />
-        <Skeleton className="h-4 w-72" />
+        <Skeleton className="h-8 w-36 mb-2" />
+        <Skeleton className="h-4 w-64" />
       </div>
 
       {/* Filters row skeleton */}
       <div className="flex flex-wrap gap-2 mb-4">
         <Skeleton className="h-9 flex-1 min-w-48" />
         <Skeleton className="h-9 w-40 rounded-lg" />
-        <Skeleton className="h-9 w-40 rounded-lg" />
         <Skeleton className="h-9 w-44 rounded-lg" />
+        <Skeleton className="h-9 w-36 rounded-lg" />
       </div>
 
       {/* Count skeleton */}
-      <Skeleton className="h-4 w-24 mb-4" />
+      <Skeleton className="h-4 w-20 mb-4" />
 
       {/* Card skeletons */}
       <div className="space-y-2">
@@ -29,11 +29,11 @@ export default function Loading() {
             style={{ opacity: 1 - i * 0.08 }}
           >
             <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-[60%]" />
+              <Skeleton className="h-4 w-[55%]" />
               <Skeleton className="h-5 w-10 rounded-md" />
-              <Skeleton className="h-5 w-16 rounded-md" />
+              <Skeleton className="h-5 w-20 rounded-md" />
+              <Skeleton className="h-5 w-16 rounded-md ml-auto" />
             </div>
-            <Skeleton className="h-3 w-32 mt-1.5" />
           </div>
         ))}
       </div>

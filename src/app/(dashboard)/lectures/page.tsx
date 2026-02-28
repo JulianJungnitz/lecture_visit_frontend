@@ -65,7 +65,7 @@ export default async function LecturesPage({
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   return (
-    <div>
+    <div className="animate-fade-in-up">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Lectures</h1>
         <p className="text-sm text-muted-foreground mt-1">Browse lectures from LMU and TUM</p>

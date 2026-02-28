@@ -149,7 +149,7 @@ export function ProgramSearch({
               href={`/programs/${program.id}`}
               className="group block"
             >
-              <div className="rounded-lg border bg-card px-4 py-3 transition-colors hover:bg-accent/50">
+              <div className="rounded-xl border border-black/[0.06] bg-white px-4 py-3 transition-all duration-200 hover:shadow-sm hover:border-black/[0.1]">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-sm font-medium text-foreground group-hover:text-accent-foreground">
                     {program.name}

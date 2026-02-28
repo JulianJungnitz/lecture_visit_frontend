@@ -15,8 +15,8 @@ export function UniversityBadge({ universityName, className }: UniversityBadgePr
       variant="outline"
       className={cn(
         'text-xs font-medium px-1.5 py-0',
-        isTUM && 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-        isLMU && 'bg-green-500/10 text-green-400 border-green-500/30',
+        isTUM && 'bg-blue-50 text-blue-600 border-blue-200',
+        isLMU && 'bg-emerald-50 text-emerald-600 border-emerald-200',
         !isTUM && !isLMU && 'bg-muted text-muted-foreground',
         className
       )}

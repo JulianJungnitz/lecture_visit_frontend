@@ -11,7 +11,7 @@ export default function DashboardLayout({
     <>
       <Sidebar />
       <div className="ml-56 min-h-screen flex flex-col">
-        <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur px-6 py-3">
+        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md shadow-[0_1px_0_0_rgba(0,0,0,0.06)] px-6 py-3">
           <Suspense>
             <Breadcrumbs />
           </Suspense>

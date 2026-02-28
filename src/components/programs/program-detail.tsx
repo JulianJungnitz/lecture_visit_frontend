@@ -26,7 +26,7 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
   return (
     <div className="flex gap-0 h-[calc(100vh-8rem)]">
       {/* Left panel: 60% */}
-      <div className="flex flex-col w-[60%] border-r border-border pr-6">
+      <div className="flex flex-col w-[60%] border-r border-black/[0.06] pr-6">
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-1">
@@ -73,7 +73,7 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
                 <Link
                   key={lecture.id}
                   href={`/lectures/${lecture.id}`}
-                  className="block rounded-md px-3 py-2.5 hover:bg-accent transition-colors"
+                  className="block rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{lecture.title}</span>
@@ -107,7 +107,7 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
           )}
         </div>
 
-        <div className="flex-1 rounded-md border border-border overflow-hidden bg-muted/30">
+        <div className="flex-1 rounded-xl border border-black/[0.06] overflow-hidden bg-black/[0.01]">
           {program.studienordnung_url ? (
             <div className="h-full flex flex-col">
               <iframe
