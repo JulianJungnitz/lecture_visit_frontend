@@ -53,11 +53,11 @@ Apply a single additive migration creating the `lecture_schedules` table and add
 - Updated AGENTS.md
 
 ### Definition of Done
-- [ ] `lecture_schedules` table exists with correct columns
-- [ ] `profiles` has `is_admin` column with default false
-- [ ] `visit_assignments` has `scheduled_for` column and `visited_at` is removed
-- [ ] FK index on `lecture_schedules.lecture_id`
-- [ ] Smoke test passes (insert schedule rows, verify defaults)
+- [x] `lecture_schedules` table exists with correct columns
+- [x] `profiles` has `is_admin` column with default false
+- [x] `visit_assignments` has `scheduled_for` column and `visited_at` is removed
+- [x] FK index on `lecture_schedules.lecture_id`
+- [x] Smoke test passes (insert schedule rows, verify defaults)
 
 ### Must Have
 - `lecture_schedules` table: id, lecture_id (FK CASCADE), day_time, frequency, location, room_url
@@ -131,7 +131,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ## TODOs
 
-- [ ] 1. Apply schema refinement migration
+- [x] 1. Apply schema refinement migration
 
   **What to do**:
   Create a single migration via `supabase_apply_migration` named `add_lecture_schedules_and_refinements` containing:
@@ -217,7 +217,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ---
 
-- [ ] 2. Update AGENTS.md with schema refinement documentation
+- [x] 2. Update AGENTS.md with schema refinement documentation
 
   **What to do**:
   - Update the Database Schema section in AGENTS.md:
@@ -273,7 +273,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ---
 
-- [ ] 3. Verify schema structure
+- [x] 3. Verify schema structure
 
   **What to do**:
   Run verification SQL queries via `supabase_execute_sql`:
@@ -359,7 +359,7 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 ---
 
-- [ ] 4. Smoke test (insert schedules, verify defaults)
+- [x] 4. Smoke test (insert schedules, verify defaults)
 
   **What to do**:
   Run via `supabase_execute_sql`:
@@ -450,19 +450,19 @@ Parallel: Task 1 ∥ Task 2, Task 3 ∥ Task 4, F1 ∥ F2 ∥ F3 ∥ F4
 
 > 4 review agents run in PARALLEL. ALL must APPROVE. Rejection → fix → re-run.
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
   Verify all "Must Have" items exist (lecture_schedules table, is_admin column, scheduled_for column, index). Verify all "Must NOT Have" items absent (no campuses table, no removed columns, no RLS). Check evidence files.
   Output: `Must Have [N/N] | Must NOT Have [N/N] | VERDICT`
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
   Run `supabase_get_advisors(type="security")` and `supabase_get_advisors(type="performance")`. Verify migration recorded via `supabase_list_migrations` (should now be 3 total). Accept RLS warnings.
   Output: `Security [N] | Performance [N] | Migrations [3/3] | VERDICT`
 
-- [ ] F3. **Real Manual QA** — `unspecified-high`
+- [x] F3. **Real Manual QA** — `unspecified-high`
   Insert realistic data: a lecture with 3 schedule slots (Mon/Wed weekly + Fri single block), query "what's the schedule for lecture X", query "all lectures happening on Monday", create a visit assignment with scheduled_for set. Verify queries work. Clean up.
   Output: `Workflow [PASS/FAIL] | Queries [N/N] | Cleanup [PASS/FAIL] | VERDICT`
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
   Compare AGENTS.md against actual DB. Verify 13 tables documented and present. Verify no undocumented changes. Verify existing `schedule` and `location` on lectures still intact.
   Output: `Tables [13/13] | Columns [match/mismatch] | VERDICT`
 
@@ -492,14 +492,14 @@ WHERE table_name = 'lecture_schedules' ORDER BY ordinal_position;
 ```
 
 ### Final Checklist
-- [ ] lecture_schedules table exists with 7 columns
-- [ ] lecture_schedules.lecture_id has FK to lectures with CASCADE
-- [ ] Index on lecture_schedules.lecture_id
-- [ ] profiles.is_admin boolean DEFAULT false
-- [ ] visit_assignments.scheduled_for timestamptz nullable
-- [ ] visit_assignments.visited_at removed
-- [ ] Existing lectures.schedule and lectures.location unchanged
-- [ ] AGENTS.md updated
-- [ ] 3 migrations recorded
-- [ ] No test data left
-- [ ] Advisors reviewed
+- [x] lecture_schedules table exists with 7 columns
+- [x] lecture_schedules.lecture_id has FK to lectures with CASCADE
+- [x] Index on lecture_schedules.lecture_id
+- [x] profiles.is_admin boolean DEFAULT false
+- [x] visit_assignments.scheduled_for timestamptz nullable
+- [x] visit_assignments.visited_at removed
+- [x] Existing lectures.schedule and lectures.location unchanged
+- [x] AGENTS.md updated
+- [x] 3 migrations recorded
+- [x] No test data left
+- [x] Advisors reviewed
