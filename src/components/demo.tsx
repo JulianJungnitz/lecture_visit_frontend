@@ -3,6 +3,7 @@
 import { DottedSurface } from "@/components/ui/dotted-surface";
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 
 const words = ['Courage', 'Lecture visits', 'Applications', ];
 
@@ -73,9 +74,12 @@ export default function DemoOne() {
                 <p className="text-xl md:text-2xl text-gray-500 max-w-[600px] mx-auto font-light">
                 Inspire the next generation</p>
                 <div className="pt-4">
-                    <button type="button" className="inline-flex items-center gap-2 bg-gradient-to-b from-[#2a2a2a] to-black text-white font-sans font-medium text-base md:text-lg px-6 py-3 rounded-xl hover:from-[#3a3a3a] hover:to-[#111] transition-all duration-200">
+                    <Link 
+                        href="/programs"
+                        className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm border border-black/10 text-black font-sans font-medium text-base md:text-lg px-6 py-3 rounded-xl hover:bg-black/5 hover:border-black/20 transition-all duration-200 shadow-sm"
+                    >
                         Book visit <span aria-hidden="true">→</span>
-                    </button>
+                    </Link>
                 </div>
             </div>
 
