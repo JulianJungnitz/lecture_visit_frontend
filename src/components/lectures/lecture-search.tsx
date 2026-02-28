@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Star, BookOpen } from 'lucide-react'
 import { SearchInput } from '@/components/search-input'
 import { UniversityBadge } from '@/components/university-badge'
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
+import { Pagination } from '@/components/pagination'
 import {
   Select,
   SelectContent,
@@ -20,30 +22,59 @@ type LectureWithUniversity = Lecture & { university: University }
 
 interface LectureSearchProps {
   lectures: LectureWithUniversity[]
+  universities: string[]
+  lectureTypes: string[]
+  totalCount: number
+  page: number
+  totalPages: number
 }
 
-export function LectureSearch({ lectures }: LectureSearchProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedUniversity, setSelectedUniversity] = useState('__all__')
-  const [selectedType, setSelectedType] = useState('__all__')
-  const [starredOnly, setStarredOnly] = useState('__all__')
+export function LectureSearch({
+  lectures,
+  universities,
+  lectureTypes,
+  totalCount,
+  page,
+  totalPages,
+}: LectureSearchProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const universities = [...new Set(lectures.map((l) => l.university.name))].sort()
-  const lectureTypes = [...new Set(lectures.map((l) => l.lecture_type).filter(Boolean))].sort() as string[]
+  const currentSearch = searchParams.get('q') ?? ''
+  const currentUniversity = searchParams.get('university') ?? '__all__'
+  const currentType = searchParams.get('type') ?? '__all__'
+  const currentStarred = searchParams.get('starred') === 'true' ? 'starred' : '__all__'
 
-  const filtered = lectures.filter((lecture) => {
-    const matchesSearch = lecture.title.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesUniversity =
-      selectedUniversity === '__all__' || lecture.university.name === selectedUniversity
-    const matchesType =
-      selectedType === '__all__' || lecture.lecture_type === selectedType
-    const matchesStarred =
-      starredOnly === '__all__' || lecture.is_starred === true
-    return matchesSearch && matchesUniversity && matchesType && matchesStarred
-  })
+  const [searchValue, setSearchValue] = useState(currentSearch)
 
-  const count = filtered.length
-  const countLabel = `${count} ${count === 1 ? 'lecture' : 'lectures'}`
+  // Debounced search — update URL after 300ms of no typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== currentSearch) {
+        updateParam('q', searchValue)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue])
+
+  // Sync local search value when URL changes externally (e.g. back button)
+  useEffect(() => {
+    setSearchValue(currentSearch)
+  }, [currentSearch])
+
+  function updateParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (!value || value === '__all__') {
+      params.delete(key)
+    } else {
+      params.set(key, value)
+    }
+    params.delete('page')
+    router.replace(`?${params.toString()}`)
+  }
+
+  const countLabel = `${totalCount} ${totalCount === 1 ? 'lecture' : 'lectures'}`
 
   return (
     <div className="space-y-4">
@@ -52,12 +83,12 @@ export function LectureSearch({ lectures }: LectureSearchProps) {
         <div className="flex-1 min-w-48">
           <SearchInput
             placeholder="Search lectures..."
-            value={searchQuery}
-            onChange={setSearchQuery}
+            value={searchValue}
+            onChange={setSearchValue}
           />
         </div>
 
-        <Select value={selectedUniversity} onValueChange={setSelectedUniversity}>
+        <Select value={currentUniversity} onValueChange={(v) => updateParam('university', v)}>
           <SelectTrigger className="w-40 h-9 text-sm">
             <SelectValue placeholder="University" />
           </SelectTrigger>
@@ -71,7 +102,7 @@ export function LectureSearch({ lectures }: LectureSearchProps) {
           </SelectContent>
         </Select>
 
-        <Select value={selectedType} onValueChange={setSelectedType}>
+        <Select value={currentType} onValueChange={(v) => updateParam('type', v)}>
           <SelectTrigger className="w-44 h-9 text-sm">
             <SelectValue placeholder="Lecture type" />
           </SelectTrigger>
@@ -85,7 +116,7 @@ export function LectureSearch({ lectures }: LectureSearchProps) {
           </SelectContent>
         </Select>
 
-        <Select value={starredOnly} onValueChange={setStarredOnly}>
+        <Select value={currentStarred} onValueChange={(v) => updateParam('starred', v === 'starred' ? 'true' : '')}>
           <SelectTrigger className="w-36 h-9 text-sm">
             <SelectValue placeholder="Starred" />
           </SelectTrigger>
@@ -100,7 +131,7 @@ export function LectureSearch({ lectures }: LectureSearchProps) {
       <p className="text-sm text-muted-foreground">{countLabel}</p>
 
       {/* Lecture list */}
-      {filtered.length === 0 ? (
+      {lectures.length === 0 ? (
         <EmptyState
           title="No lectures found"
           description="Try adjusting your search or filters"
@@ -108,7 +139,7 @@ export function LectureSearch({ lectures }: LectureSearchProps) {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map((lecture) => (
+          {lectures.map((lecture) => (
             <Link
               key={lecture.id}
               href={`/lectures/${lecture.id}`}
@@ -139,6 +170,9 @@ export function LectureSearch({ lectures }: LectureSearchProps) {
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      <Pagination currentPage={page} totalPages={totalPages} />
     </div>
   )
 }

@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { SearchInput } from '@/components/search-input'
 import { UniversityBadge } from '@/components/university-badge'
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
+import { Pagination } from '@/components/pagination'
 import {
   Select,
   SelectContent,
@@ -17,30 +19,61 @@ import type { StudyProgramWithUniversity } from '@/types/database'
 
 interface ProgramSearchProps {
   programs: StudyProgramWithUniversity[]
+  universities: string[]
+  degreeTypes: string[]
+  categories: string[]
+  totalCount: number
+  page: number
+  totalPages: number
 }
 
-export function ProgramSearch({ programs }: ProgramSearchProps) {
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedUniversity, setSelectedUniversity] = useState('__all__')
-  const [selectedDegreeType, setSelectedDegreeType] = useState('__all__')
-  const [selectedCategory, setSelectedCategory] = useState('__all__')
+export function ProgramSearch({
+  programs,
+  universities,
+  degreeTypes,
+  categories,
+  totalCount,
+  page,
+  totalPages,
+}: ProgramSearchProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const universities = [...new Set(programs.map((p) => p.university.name))]
-  const degreeTypes = [...new Set(programs.map((p) => p.degree_type))]
-  const categories = [...new Set(programs.map((p) => p.category).filter(Boolean))] as string[]
+  const currentSearch = searchParams.get('q') ?? ''
+  const currentUniversity = searchParams.get('university') ?? '__all__'
+  const currentDegreeType = searchParams.get('degree') ?? '__all__'
+  const currentCategory = searchParams.get('category') ?? '__all__'
 
-  const filtered = programs.filter((program) => {
-    const matchesSearch = program.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesUniversity =
-      selectedUniversity === '__all__' || program.university.name === selectedUniversity
-    const matchesDegreeType =
-      selectedDegreeType === '__all__' || program.degree_type === selectedDegreeType
-    const matchesCategory = selectedCategory === '__all__' || program.category === selectedCategory
-    return matchesSearch && matchesUniversity && matchesDegreeType && matchesCategory
-  })
+  const [searchValue, setSearchValue] = useState(currentSearch)
 
-  const count = filtered.length
-  const countLabel = `${count} ${count === 1 ? 'program' : 'programs'}`
+  // Debounced search — update URL after 300ms of no typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== currentSearch) {
+        updateParam('q', searchValue)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue])
+
+  // Sync local search value when URL changes externally (e.g. back button)
+  useEffect(() => {
+    setSearchValue(currentSearch)
+  }, [currentSearch])
+
+  function updateParam(key: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (!value || value === '__all__') {
+      params.delete(key)
+    } else {
+      params.set(key, value)
+    }
+    params.delete('page')
+    router.replace(`?${params.toString()}`)
+  }
+
+  const countLabel = `${totalCount} ${totalCount === 1 ? 'program' : 'programs'}`
 
   return (
     <div className="space-y-4">
@@ -49,12 +82,12 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
         <div className="flex-1 min-w-48">
           <SearchInput
             placeholder="Search programs..."
-            value={searchQuery}
-            onChange={setSearchQuery}
+            value={searchValue}
+            onChange={setSearchValue}
           />
         </div>
 
-        <Select value={selectedUniversity} onValueChange={setSelectedUniversity}>
+        <Select value={currentUniversity} onValueChange={(v) => updateParam('university', v)}>
           <SelectTrigger className="w-40 h-9 text-sm">
             <SelectValue placeholder="University" />
           </SelectTrigger>
@@ -68,7 +101,7 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
           </SelectContent>
         </Select>
 
-        <Select value={selectedDegreeType} onValueChange={setSelectedDegreeType}>
+        <Select value={currentDegreeType} onValueChange={(v) => updateParam('degree', v)}>
           <SelectTrigger className="w-40 h-9 text-sm">
             <SelectValue placeholder="Degree type" />
           </SelectTrigger>
@@ -83,7 +116,7 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
         </Select>
 
         {categories.length > 0 && (
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <Select value={currentCategory} onValueChange={(v) => updateParam('category', v)}>
             <SelectTrigger className="w-44 h-9 text-sm">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
@@ -103,14 +136,14 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
       <p className="text-sm text-muted-foreground">{countLabel}</p>
 
       {/* Program list */}
-      {filtered.length === 0 ? (
+      {programs.length === 0 ? (
         <EmptyState
           title="No programs found"
           description="Try adjusting your search or filters"
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map((program) => (
+          {programs.map((program) => (
             <Link
               key={program.id}
               href={`/programs/${program.id}`}
@@ -134,6 +167,9 @@ export function ProgramSearch({ programs }: ProgramSearchProps) {
           ))}
         </div>
       )}
+
+      {/* Pagination */}
+      <Pagination currentPage={page} totalPages={totalPages} />
     </div>
   )
 }
