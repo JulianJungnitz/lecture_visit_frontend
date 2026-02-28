@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { LectureDetail } from '@/components/lectures/lecture-detail'
 import { EmptyState } from '@/components/empty-state'
 import { BookOpen } from 'lucide-react'
@@ -9,6 +9,7 @@ export default async function LecturePage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const supabase = await createClient()
   const { id } = await params
 
   // Fetch lecture with university

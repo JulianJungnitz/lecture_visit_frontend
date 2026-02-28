@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { ProgramDetail } from '@/components/programs/program-detail'
 import { EmptyState } from '@/components/empty-state'
 import { BookOpen } from 'lucide-react'
@@ -9,6 +9,7 @@ export default async function ProgramPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const supabase = await createClient()
   const { id } = await params
 
   // Fetch program with university and faculty

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/server'
 import { LectureSearch } from '@/components/lectures/lecture-search'
 import type { Lecture, University } from '@/types/database'
 
@@ -11,6 +11,7 @@ export default async function LecturesPage({
 }: {
   searchParams: Promise<{ q?: string; university?: string; type?: string; starred?: string; page?: string }>
 }) {
+  const supabase = await createClient()
   const params = await searchParams
   const parsedPage = params.page ? parseInt(params.page, 10) : 1
   const page = isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
