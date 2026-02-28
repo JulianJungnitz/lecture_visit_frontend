@@ -1,129 +1,142 @@
 # Task 3: Schema Structure Verification
 
 **Date**: 2026-02-28  
-**Migration**: `create_initial_schema`  
-**Project**: Lecture Visit (Supabase wgdzikstvulyrkuozemb)
+**Migration**: `add_lecture_schedules_and_refinements`  
+**Status**: ✅ ALL QUERIES PASSED
 
 ---
 
-## Query 1: Table Count
+## Query 1: Verify lecture_schedules columns (7 columns expected)
 
-**Assertion**: Exactly 12 public tables
+**SQL**:
+```sql
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'lecture_schedules'
+ORDER BY ordinal_position;
+```
 
-**Result**: ✅ PASS
+**Result**:
+| column_name | data_type | is_nullable | column_default |
+|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() |
+| lecture_id | uuid | NO | (null) |
+| day_time | text | YES | (null) |
+| frequency | text | YES | (null) |
+| location | text | YES | (null) |
+| room_url | text | YES | (null) |
+| created_at | timestamp with time zone | YES | now() |
 
-Tables found (12):
-1. campaign_professor_lectures
-2. campaign_professors
-3. campaigns
-4. faculties
-5. lecture_professors
-6. lecture_study_programs
-7. lectures
-8. professors
-9. profiles
-10. study_programs
-11. universities
-12. visit_assignments
-
----
-
-## Query 2: Foreign Key Relationships
-
-**Assertion**: At least 15 FK relationships
-
-**Result**: ✅ PASS (17 FKs found)
-
-FK Relationships:
-1. campaign_professor_lectures.campaign_professor_id → campaign_professors
-2. campaign_professor_lectures.lecture_id → lectures
-3. campaign_professors.campaign_id → campaigns
-4. campaign_professors.professor_id → professors
-5. campaigns.created_by → profiles
-6. faculties.university_id → universities
-7. lecture_professors.lecture_id → lectures
-8. lecture_professors.professor_id → professors
-9. lecture_study_programs.study_program_id → study_programs
-10. lecture_study_programs.lecture_id → lectures
-11. lectures.university_id → universities
-12. professors.university_id → universities
-13. study_programs.university_id → universities
-14. study_programs.faculty_id → faculties
-15. visit_assignments.campaign_id → campaigns
-16. visit_assignments.lecture_id → lectures
-17. visit_assignments.assigned_to → profiles
+**Assertion**: Returns 7 rows ✅ PASS  
+**Details**: All expected columns present with correct data types and nullability.
 
 ---
 
-## Query 3: Enum Types
+## Query 2: Verify profiles.is_admin
 
-**Assertion**: 3 custom enum types with correct values
+**SQL**:
+```sql
+SELECT column_name, data_type, column_default
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'is_admin';
+```
 
-**Result**: ✅ PASS
+**Result**:
+| column_name | data_type | column_default |
+|---|---|---|
+| is_admin | boolean | false |
 
-Custom Enums (from public schema):
-
-### outreach_status (4 values)
-- not_contacted
-- emailed
-- confirmed
-- declined
-
-### campaign_status (3 values)
-- planning
-- active
-- completed
-
-### visit_status (3 values)
-- planned
-- visited
-- cancelled
-
-**Note**: Query also returned Supabase system enums (aal_level, action, buckettype, code_challenge_method, equality_op, factor_status, factor_type, oauth_*, one_time_token_type) which are expected from Supabase Auth/Storage extensions.
+**Assertion**: boolean, default 'false' ✅ PASS  
+**Details**: Column exists with correct type and default value.
 
 ---
 
-## Query 4: Unique Constraints
+## Query 3: Verify visit_assignments.scheduled_for
 
-**Assertion**: universities(name) and campaign_professors(campaign_id, professor_id)
+**SQL**:
+```sql
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'visit_assignments' AND column_name = 'scheduled_for';
+```
 
-**Result**: ✅ PASS
+**Result**:
+| column_name | data_type | is_nullable |
+|---|---|---|
+| scheduled_for | timestamp with time zone | YES |
 
-Unique Constraints:
-1. **universities.universities_name_key** → name
-2. **campaign_professors.campaign_professors_campaign_id_professor_id_key** → campaign_id, professor_id
+**Assertion**: timestamptz, nullable = 'YES' ✅ PASS  
+**Details**: Column exists with correct type and is nullable.
 
 ---
 
-## Query 5: Partial Unique Indexes on external_id
+## Query 4: Verify FK + index on lecture_schedules
 
-**Assertion**: Partial unique indexes exist for both lectures and professors
+**SQL**:
+```sql
+SELECT indexname FROM pg_indexes
+WHERE schemaname = 'public' AND tablename = 'lecture_schedules';
+```
 
-**Result**: ✅ PASS
+**Result**:
+| indexname |
+|---|
+| lecture_schedules_pkey |
+| idx_lecture_schedules_lecture_id |
 
-Indexes:
-1. **lectures.idx_lectures_external_id**
-   - Definition: `CREATE UNIQUE INDEX idx_lectures_external_id ON public.lectures USING btree (university_id, external_id) WHERE (external_id IS NOT NULL)`
-   - Composite key: (university_id, external_id)
-   - Partial: WHERE external_id IS NOT NULL ✓
+**Assertion**: Contains index on lecture_id (idx_lecture_schedules_lecture_id) ✅ PASS  
+**Details**: Both primary key and foreign key index present.
 
-2. **professors.idx_professors_external_id**
-   - Definition: `CREATE UNIQUE INDEX idx_professors_external_id ON public.professors USING btree (university_id, external_id) WHERE (external_id IS NOT NULL)`
-   - Composite key: (university_id, external_id)
-   - Partial: WHERE external_id IS NOT NULL ✓
+---
+
+## Query 5: Verify lectures.schedule and lectures.location still exist
+
+**SQL**:
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'lectures'
+  AND column_name IN ('schedule', 'location');
+```
+
+**Result**:
+| column_name |
+|---|
+| location |
+| schedule |
+
+**Assertion**: Returns 2 rows ✅ PASS  
+**Details**: Both legacy columns preserved as scraper fallback fields.
+
+---
+
+## Query 6: Verify visited_at is removed from visit_assignments
+
+**SQL**:
+```sql
+SELECT column_name FROM information_schema.columns
+WHERE table_schema = 'public' AND table_name = 'visit_assignments'
+  AND column_name = 'visited_at';
+```
+
+**Result**:
+(empty result set)
+
+**Assertion**: Returns 0 rows ✅ PASS  
+**Details**: Column successfully removed; replaced by scheduled_for.
 
 ---
 
 ## Summary
 
-| Requirement | Status | Details |
-|-------------|--------|---------|
-| 12 public tables | ✅ PASS | All 12 tables present |
-| ≥15 FK relationships | ✅ PASS | 17 FKs confirmed |
-| 3 enum types | ✅ PASS | outreach_status, campaign_status, visit_status |
-| Unique constraints | ✅ PASS | universities(name), campaign_professors(campaign_id, professor_id) |
-| Partial unique indexes | ✅ PASS | lectures & professors on (university_id, external_id) WHERE external_id IS NOT NULL |
+| Query | Assertion | Result |
+|---|---|---|
+| 1 | lecture_schedules has 7 columns | ✅ PASS |
+| 2 | profiles.is_admin is boolean DEFAULT false | ✅ PASS |
+| 3 | visit_assignments.scheduled_for is timestamptz nullable | ✅ PASS |
+| 4 | lecture_schedules has FK index | ✅ PASS |
+| 5 | lectures.schedule and lectures.location exist | ✅ PASS |
+| 6 | visit_assignments.visited_at removed | ✅ PASS |
 
-**Overall**: ✅ **ALL ASSERTIONS PASSED**
+**Overall Status**: ✅ **ALL QUERIES PASSED**
 
-The `create_initial_schema` migration successfully created all structural requirements.
+Schema structure verified successfully after `add_lecture_schedules_and_refinements` migration.

@@ -1,10 +1,11 @@
 {
-  "active_plan": "/home/francisco/Documents/MM/lecture-visit/frontend/.sisyphus/plans/supabase-schema.md",
-  "started_at": "2026-02-28T11:40:35.737Z",
+  "active_plan": "/home/francisco/Documents/MM/lecture-visit/frontend/.sisyphus/plans/schema-refinement.md",
+  "started_at": "2026-02-28T12:58:51.325Z",
   "session_ids": [
-    "ses_35c24b3e6ffe573AXCl0Wtm6LQ"
+    "ses_35c24b3e6ffe573AXCl0Wtm6LQ",
+    "ses_35bab01d3ffeoxMLuIt7RDHyC3"
   ],
-  "plan_name": "supabase-schema",
-  "worktree_path": "/home/francisco/Documents/MM/lecture-visit/frontend",
-  "agent": "atlas"
+  "plan_name": "schema-refinement",
+  "agent": "atlas",
+  "worktree_path": "/home/francisco/Documents/MM/lecture-visit/frontend"
 }

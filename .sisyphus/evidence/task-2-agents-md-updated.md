@@ -1,21 +1,22 @@
-# Task 2 Evidence: AGENTS.md Updated
+# Evidence: AGENTS.md Updated (Task 2)
+
+**Date**: 2026-02-28
 
 ## Changes Made
 
-### File: `/home/francisco/Documents/MM/lecture-visit/frontend/AGENTS.md`
+- Line 98: "12 tables" -> "13 tables"; migration list updated to include `add_lecture_schedules_and_refinements`
+- Line 111: `profiles` row updated to mention `is_admin` boolean
+- Line 115: `visit_assignments` row updated to reference `scheduled_for` timestamp (removed `visited_at`)
+- Line 116: New `lecture_schedules` row added to tables table
+- Lines 124-126: Key Design Decisions expanded with schedule format convention, admin roles, and visit scheduling notes
+- Line 131: Conventions section updated to "13 tables" and both migrations
 
-1. **Tech Stack section**: Updated Backend/Database line to reflect schema is deployed (`create_initial_schema`).
+## Verification
 
-2. **Architecture Decisions section**: Renamed from "Architecture Decisions (Pending)" to "Architecture Decisions". Updated description. Marked items 4 and 5 as RESOLVED:
-   - Auth model: RESOLVED (Supabase Auth with profiles table, club-internal)
-   - Schema design: RESOLVED (Professor as first-class entity, campaigns model)
-   - Items 1, 2, 3 remain pending.
+All 4 required terms present in AGENTS.md:
+- "13 tables" (lines 98, 131)
+- "lecture_schedules" (lines 116, 124)
+- "is_admin" (lines 111, 125)
+- "scheduled_for" (lines 115, 126)
 
-3. **New "Database Schema" section added** after Architecture Decisions:
-   - Lists all 12 tables with purposes
-   - Documents key design decisions (professor dedup, campaign model, outreach statuses, source tracking, profiles trigger)
-
-4. **Conventions section**: Updated "No tables exist yet" line to reflect schema is deployed.
-
-## Outcome
-AGENTS.md now reflects the finalized database state so future agents don't re-open resolved decisions.
+No existing content removed.
