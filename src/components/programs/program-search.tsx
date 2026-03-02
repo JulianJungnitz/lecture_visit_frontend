@@ -1,6 +1,5 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { SearchInput } from '@/components/search-input'
@@ -44,24 +43,6 @@ export function ProgramSearch({
   const currentDegreeType = searchParams.get('degree') ?? '__all__'
   const currentCategory = searchParams.get('category') ?? '__all__'
 
-  const [searchValue, setSearchValue] = useState(currentSearch)
-
-  // Debounced search — update URL after 300ms of no typing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchValue !== currentSearch) {
-        updateParam('q', searchValue)
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchValue])
-
-  // Sync local search value when URL changes externally (e.g. back button)
-  useEffect(() => {
-    setSearchValue(currentSearch)
-  }, [currentSearch])
-
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
     if (!value || value === '__all__') {
@@ -82,8 +63,8 @@ export function ProgramSearch({
         <div className="flex-1 min-w-48">
           <SearchInput
             placeholder="Search programs..."
-            value={searchValue}
-            onChange={setSearchValue}
+            value={currentSearch}
+            onChange={(v) => updateParam('q', v)}
           />
         </div>
 
