@@ -10,6 +10,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
+  Select, SelectContent, SelectItem, SelectTrigger,
+} from '@/components/ui/select'
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -43,17 +46,17 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
         return
       }
       setIsSearching(true)
-      const results = await searchAllLectures(trimmed, assignedLectures.map(l => l.id))
+      const results = await searchAllLectures(trimmed, assignedLectures.map(l => l.id), program.university.id)
       setSearchResults(results)
       setIsSearching(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [addSearch, assignedLectures])
+  }, [addSearch, assignedLectures, program.university.id])
 
-  async function handleAdd(lecture: LectureSearchResult) {
+  async function handleAdd(lecture: LectureSearchResult, obligation: string) {
     setAddingId(lecture.id)
-    await addLectureToProgram(lecture.id, program.id)
-    setAssignedLectures(prev => [...prev, { ...lecture, lecture_obligation: null }])
+    await addLectureToProgram(lecture.id, program.id, obligation)
+    setAssignedLectures(prev => [...prev, { ...lecture, lecture_obligation: obligation }])
     setSearchResults(prev => prev.filter(l => l.id !== lecture.id))
     setAddingId(null)
   }
@@ -256,22 +259,26 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
                           {lecture.lecture_type}
                         </Badge>
                       )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2.5 text-xs"
-                        disabled={addingId === lecture.id}
-                        onClick={() => handleAdd(lecture)}
-                      >
-                        {addingId === lecture.id ? (
+                      {addingId === lecture.id ? (
+                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled>
                           <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
-                          </>
-                        )}
-                      </Button>
+                        </Button>
+                      ) : (
+                        <Select
+                          value=""
+                          onValueChange={(v) => handleAdd(lecture, v)}
+                        >
+                          <SelectTrigger className="h-7 w-auto gap-1 px-2.5 text-xs border rounded-md">
+                            <Plus className="h-3 w-3" />
+                            <span>Add</span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mandatory">Mandatory</SelectItem>
+                            <SelectItem value="elective">Elective</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   </div>
                 ))}
