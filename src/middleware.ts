@@ -36,25 +36,24 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // AUTH DISABLED — re-enable when Mailjet SMTP is configured
-  // // Allow public routes (auth pages, landing page assets)
-  // const isPublicRoute =
-  //   request.nextUrl.pathname.startsWith('/auth') ||
-  //   request.nextUrl.pathname === '/'
-  //
-  // // Redirect unauthenticated users to login
-  // if (!user && !isPublicRoute) {
-  //   const url = request.nextUrl.clone()
-  //   url.pathname = '/auth/login'
-  //   return NextResponse.redirect(url)
-  // }
-  //
-  // // If user is logged in and visits login page, redirect to dashboard
-  // if (user && request.nextUrl.pathname === '/auth/login') {
-  //   const url = request.nextUrl.clone()
-  //   url.pathname = '/programs'
-  //   return NextResponse.redirect(url)
-  // }
+  // Allow public routes (auth pages, landing page)
+  const isPublicRoute =
+    request.nextUrl.pathname.startsWith('/auth') ||
+    request.nextUrl.pathname === '/'
+
+  // Redirect unauthenticated users to login
+  if (!user && !isPublicRoute) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return NextResponse.redirect(url)
+  }
+
+  // If user is logged in and visits login page, redirect to dashboard
+  if (user && request.nextUrl.pathname === '/auth/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/programs'
+    return NextResponse.redirect(url)
+  }
 
   return supabaseResponse
 }
