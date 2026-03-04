@@ -74,6 +74,11 @@ export type LectureProfessor = {
 export type LectureStudyProgram = {
   lecture_id: string
   study_program_id: string
+  lecture_obligation: string | null
+}
+
+export type LectureWithObligation = Lecture & {
+  lecture_obligation: string | null
 }
 
 // Composite types for common query results

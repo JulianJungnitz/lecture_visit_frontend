@@ -1,9 +1,9 @@
-import Link from 'next/link'
-import { GraduationCap, BookOpen, User } from 'lucide-react'
+import { User } from 'lucide-react'
 import { SemesterSelector } from '@/components/semester-selector'
 import { SignOutButton } from '@/components/sign-out-button'
 import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
+import { SidebarNav } from '@/components/sidebar-nav'
 export async function Sidebar() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,22 +17,7 @@ export async function Sidebar() {
         />
         <span className="font-semibold text-sm tracking-tight text-foreground">Lecture Visit Tool</span>
       </div>
-      <nav className="flex-1 px-3 py-2 space-y-0.5">
-        <Link
-          href="/programs"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-black/[0.04] transition-all duration-200"
-        >
-          <GraduationCap className="h-4 w-4" />
-          Programs
-        </Link>
-        <Link
-          href="/lectures"
-          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-black/[0.04] transition-all duration-200"
-        >
-          <BookOpen className="h-4 w-4" />
-          Lectures
-        </Link>
-      </nav>
+      <SidebarNav />
       <div className="px-4 py-3 border-t border-black/[0.06]">
         <p className="text-xs text-muted-foreground mb-2">Semester</p>
         <Suspense>

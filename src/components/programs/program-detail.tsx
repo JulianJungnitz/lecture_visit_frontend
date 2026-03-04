@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ExternalLink, FileText, BookOpen, Plus, Loader2, X } from 'lucide-react'
+import { ExternalLink, FileText, BookOpen, Plus, Loader2, X, ChevronRight } from 'lucide-react'
 import { UniversityBadge } from '@/components/university-badge'
 import { SearchInput } from '@/components/search-input'
 import { EmptyState } from '@/components/empty-state'
@@ -16,11 +16,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { searchAllLectures, addLectureToProgram, removeLectureFromProgram, type LectureSearchResult } from '@/app/actions/programs'
 import { StarToggle } from '@/components/star-toggle'
-import type { StudyProgramWithDetails, Lecture } from '@/types/database'
+import type { StudyProgramWithDetails, LectureWithObligation } from '@/types/database'
+
 
 interface ProgramDetailProps {
   program: StudyProgramWithDetails
-  lectures: Lecture[]
+  lectures: LectureWithObligation[]
 }
 
 export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
@@ -29,6 +30,8 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
   const [searchResults, setSearchResults] = useState<LectureSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ Elective: true, Unknown: true })
+  const [lectureTypeOnly, setLectureTypeOnly] = useState(true)
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -47,15 +50,15 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
     return () => clearTimeout(timer)
   }, [addSearch, assignedLectures])
 
-  async function handleAdd(lecture: Lecture) {
+  async function handleAdd(lecture: LectureSearchResult) {
     setAddingId(lecture.id)
     await addLectureToProgram(lecture.id, program.id)
-    setAssignedLectures(prev => [...prev, lecture])
+    setAssignedLectures(prev => [...prev, { ...lecture, lecture_obligation: null }])
     setSearchResults(prev => prev.filter(l => l.id !== lecture.id))
     setAddingId(null)
   }
 
-  async function handleRemove(lecture: Lecture) {
+  async function handleRemove(lecture: LectureWithObligation) {
     setRemovingId(lecture.id)
     await removeLectureFromProgram(lecture.id, program.id)
     setAssignedLectures(prev => prev.filter(l => l.id !== lecture.id))
@@ -95,11 +98,20 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
           )}
         </div>
 
-        <Separator className="mb-4" />
+        <Separator className="mb-3" />
 
-        {/* Assigned lectures */}
-        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-          Lectures · {assignedLectures.length}
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setLectureTypeOnly(v => !v)}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+              lectureTypeOnly
+                ? 'bg-foreground text-background border-foreground'
+                : 'border-black/[0.12] text-muted-foreground hover:border-black/25 hover:text-foreground'
+            }`}
+          >
+            Lectures only
+          </button>
         </div>
 
         <ScrollArea className="flex-1 min-h-0">
@@ -110,53 +122,83 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
               icon={BookOpen}
             />
           ) : (
-            <div className="space-y-1 pr-4">
-              {assignedLectures.map(lecture => (
-                <div key={lecture.id} className="group flex items-center rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all duration-200">
-                  <Link href={`/lectures/${lecture.id}`} className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{lecture.title}</span>
-                      {lecture.lecture_type && (
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {lecture.lecture_type}
-                        </Badge>
-                      )}
-                    </div>
-                    {lecture.semester && (
-                      <span className="text-xs text-muted-foreground">{lecture.semester}</span>
-                    )}
-                  </Link>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        type="button"
-                        disabled={removingId === lecture.id}
-                        className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/[0.06] text-muted-foreground hover:text-foreground disabled:opacity-50"
-                        aria-label="Remove lecture from program"
-                      >
-                        {removingId === lecture.id
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          : <X className="h-3.5 w-3.5" />
-                        }
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove lecture?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          &quot;{lecture.title}&quot; will be removed from this program. You can add it back at any time.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleRemove(lecture)}>
-                          Remove
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              ))}
+            <div className="space-y-6 pr-4">
+              {(['mandatory', 'elective', null] as const).map(obligation => {
+                const group = assignedLectures.filter(l => {
+                  if (lectureTypeOnly) {
+                    const t = (l.lecture_type ?? '').toLowerCase()
+                    if (!t.includes('lecture') && !t.includes('vorlesung')) return false
+                  }
+                  return obligation === null
+                    ? l.lecture_obligation !== 'mandatory' && l.lecture_obligation !== 'elective'
+                    : l.lecture_obligation === obligation
+                })
+                if (group.length === 0) return null
+                const label = obligation === 'mandatory' ? 'Mandatory' : obligation === 'elective' ? 'Elective' : 'Unknown'
+                return (
+                  <div key={label}>
+                    <button
+                      type="button"
+                      onClick={() => setCollapsed(prev => ({ ...prev, [label]: !prev[label] }))}
+                      className="flex items-center gap-2 mb-2 w-full text-left"
+                    >
+                      <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${collapsed[label] ? '' : 'rotate-90'}`} />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-foreground/70">{label}</span>
+                      <span className="text-xs text-muted-foreground bg-black/[0.05] rounded-full px-1.5 py-0.5 leading-none">{group.length}</span>
+                      <div className="flex-1 h-px bg-black/[0.06]" />
+                    </button>
+                    {!collapsed[label] && <div className="space-y-1">
+                      {group.map(lecture => (
+                        <div key={lecture.id} className="group flex items-center rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all duration-200">
+                          <StarToggle id={lecture.id} type="lecture" initialStarred={!!lecture.is_starred} size="sm" />
+                          <Link href={`/lectures/${lecture.id}`} className="flex-1 min-w-0 ml-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">{lecture.title}</span>
+                              {lecture.lecture_type && (
+                                <Badge variant="outline" className="text-xs shrink-0">
+                                  {lecture.lecture_type}
+                                </Badge>
+                              )}
+                            </div>
+                            {lecture.semester && (
+                              <span className="text-xs text-muted-foreground">{lecture.semester}</span>
+                            )}
+                          </Link>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                type="button"
+                                disabled={removingId === lecture.id}
+                                className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/[0.06] text-muted-foreground hover:text-foreground disabled:opacity-50"
+                                aria-label="Remove lecture from program"
+                              >
+                                {removingId === lecture.id
+                                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  : <X className="h-3.5 w-3.5" />
+                                }
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove lecture?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  &quot;{lecture.title}&quot; will be removed from this program. You can add it back at any time.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleRemove(lecture)}>
+                                  Remove
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      ))}
+                    </div>}
+                  </div>
+                )
+              })}
             </div>
           )}
         </ScrollArea>

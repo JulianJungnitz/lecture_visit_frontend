@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ProgramDetail } from '@/components/programs/program-detail'
 import { EmptyState } from '@/components/empty-state'
 import { BookOpen } from 'lucide-react'
-import type { StudyProgramWithDetails, Lecture } from '@/types/database'
+import type { StudyProgramWithDetails, LectureWithObligation } from '@/types/database'
 
 export default async function ProgramPage({
   params,
@@ -32,15 +32,18 @@ export default async function ProgramPage({
   // Fetch lectures for this program via junction table
   const { data: lectureLinks } = await supabase
     .from('lecture_study_programs')
-    .select('lecture:lectures(id, title, lecture_type, semester, university_id)')
+    .select('lecture_obligation, lecture:lectures(id, title, lecture_type, semester, university_id, is_starred)')
     .eq('study_program_id', id)
 
-  const lectures = (lectureLinks?.map(l => l.lecture).filter(Boolean) ?? []) as unknown as Lecture[]
+  const lectures = (lectureLinks?.map(l => ({
+    ...l.lecture,
+    lecture_obligation: l.lecture_obligation ?? null,
+  })).filter(Boolean) ?? []) as unknown as LectureWithObligation[]
 
   return (
     <ProgramDetail
       program={program as StudyProgramWithDetails}
-      lectures={lectures}
+      lectures={lectures as LectureWithObligation[]}
     />
   )
 }

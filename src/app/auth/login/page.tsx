@@ -90,7 +90,7 @@ export default function LoginPage() {
               )}
             </CardContent>
             <CardFooter>
-              <Button type="submit" className="w-full" disabled={status === 'loading'}>
+              <Button type="submit" className="w-full bg-black hover:bg-black/90 text-white" disabled={status === 'loading'}>
                 {status === 'loading' ? 'Sending...' : 'Send magic link'}
               </Button>
             </CardFooter>
