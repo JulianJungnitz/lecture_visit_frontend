@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { GraduationCap, BookOpen } from 'lucide-react'
+import { GraduationCap, BookOpen, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -15,6 +15,11 @@ const navItems = [
     title: 'Lectures',
     href: '/lectures',
     icon: BookOpen
+  },
+  {
+    title: 'Professors',
+    href: '/professors',
+    icon: Users
   }
 ]
 

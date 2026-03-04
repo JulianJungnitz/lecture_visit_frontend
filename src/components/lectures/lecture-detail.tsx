@@ -93,7 +93,7 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
             {professors.map(prof => {
               const salutation = getSalutation(prof.gender)
               return (
-                <div key={prof.id} className="rounded-xl border border-black/[0.06] p-4">
+                <Link key={prof.id} href={`/professors/${prof.id}`} className="rounded-xl border border-black/[0.06] p-4 block hover:shadow-sm hover:border-black/[0.1] transition-all duration-200">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-0.5">
@@ -107,26 +107,22 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
                       )}
                     </div>
                     {prof.source_url && (
-                      <a
-                        href={prof.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                      <span
+                        className="shrink-0 text-xs text-muted-foreground flex items-center gap-1"
                       >
                         <ExternalLink className="h-3 w-3" />
                         Profile
-                      </a>
+                      </span>
                     )}
                   </div>
                   <div className="mt-2">
                     {prof.email ? (
-                      <a
-                        href={`mailto:${prof.email}`}
-                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      <span
+                        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
                       >
                         <Mail className="h-3 w-3" />
                         {prof.email}
-                      </a>
+                      </span>
                     ) : (
                       <span className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
                         <Mail className="h-3 w-3" />
@@ -134,7 +130,7 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
                       </span>
                     )}
                   </div>
-                </div>
+                </Link>
               )
             })}
           </div>
