@@ -7,7 +7,7 @@ const PAGE_SIZE = 50
 export default async function ProgramsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; university?: string; degree?: string; category?: string; page?: string }>
+  searchParams: Promise<{ q?: string; university?: string; degree?: string; category?: string; starred?: string; page?: string }>
 }) {
   const supabase = await createClient()
   const params = await searchParams
@@ -17,6 +17,7 @@ export default async function ProgramsPage({
   const universityFilter = params.university ?? ''
   const degreeFilter = params.degree ?? ''
   const categoryFilter = params.category ?? ''
+  const starredFilter = params.starred === 'true'
 
   const offset = (page - 1) * PAGE_SIZE
 
@@ -61,8 +62,12 @@ export default async function ProgramsPage({
   if (categoryFilter) {
     query = query.eq('category', categoryFilter)
   }
+  if (starredFilter) {
+    query = query.eq('is_starred', true)
+  }
 
   const { data, count, error } = await query
+    .order('is_starred', { ascending: false, nullsFirst: false })
     .order('name')
     .range(offset, offset + PAGE_SIZE - 1)
 

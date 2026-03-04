@@ -20,6 +20,7 @@ export type StudyProgram = {
   category: string | null
   studienordnung_url: string | null
   url: string | null
+  is_starred: boolean | null
 }
 
 export type SemesterType = 

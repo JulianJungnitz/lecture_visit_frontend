@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import { Mail, ExternalLink, MapPin, Calendar, Star, Users, BookOpen, Clock } from 'lucide-react'
+import { Mail, ExternalLink, MapPin, Calendar, Users, BookOpen, Clock } from 'lucide-react'
 import { UniversityBadge } from '@/components/university-badge'
 import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { StarToggle } from '@/components/star-toggle'
 import type { Lecture, Professor, LectureSchedule, StudyProgram, University } from '@/types/database'
 
 // Helper: format professor display name
@@ -40,9 +41,7 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
       <div>
         <div className="flex items-start gap-3 mb-2">
           <h1 className="text-2xl font-semibold tracking-tight leading-tight">{lecture.title}</h1>
-          {lecture.is_starred && (
-            <Star className="h-5 w-5 text-yellow-500 fill-yellow-500 mt-0.5 shrink-0" />
-          )}
+          <StarToggle id={lecture.id} type="lecture" initialStarred={!!lecture.is_starred} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <UniversityBadge universityName={lecture.university.name} />

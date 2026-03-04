@@ -57,6 +57,7 @@ export default async function LecturesPage({
   }
 
   const { data, count, error } = await query
+    .order('is_starred', { ascending: false, nullsFirst: false })
     .order('title')
     .range(offset, offset + PAGE_SIZE - 1)
 

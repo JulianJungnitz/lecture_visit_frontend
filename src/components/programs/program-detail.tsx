@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ExternalLink, FileText, BookOpen } from 'lucide-react'
+import { ExternalLink, FileText, BookOpen, Plus, Loader2, X } from 'lucide-react'
 import { UniversityBadge } from '@/components/university-badge'
 import { SearchInput } from '@/components/search-input'
 import { EmptyState } from '@/components/empty-state'
@@ -9,6 +9,13 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { searchAllLectures, addLectureToProgram, removeLectureFromProgram, type LectureSearchResult } from '@/app/actions/programs'
+import { StarToggle } from '@/components/star-toggle'
 import type { StudyProgramWithDetails, Lecture } from '@/types/database'
 
 interface ProgramDetailProps {
@@ -17,11 +24,43 @@ interface ProgramDetailProps {
 }
 
 export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
-  const [search, setSearch] = useState('')
+  const [assignedLectures, setAssignedLectures] = useState(lectures)
+  const [addSearch, setAddSearch] = useState('')
+  const [searchResults, setSearchResults] = useState<LectureSearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [addingId, setAddingId] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
-  const filtered = lectures.filter(l =>
-    l.title.toLowerCase().includes(search.toLowerCase())
-  )
+  useEffect(() => {
+    const trimmed = addSearch.trim()
+    const timer = setTimeout(async () => {
+      if (!trimmed) {
+        setSearchResults([])
+        setIsSearching(false)
+        return
+      }
+      setIsSearching(true)
+      const results = await searchAllLectures(trimmed, assignedLectures.map(l => l.id))
+      setSearchResults(results)
+      setIsSearching(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [addSearch, assignedLectures])
+
+  async function handleAdd(lecture: Lecture) {
+    setAddingId(lecture.id)
+    await addLectureToProgram(lecture.id, program.id)
+    setAssignedLectures(prev => [...prev, lecture])
+    setSearchResults(prev => prev.filter(l => l.id !== lecture.id))
+    setAddingId(null)
+  }
+
+  async function handleRemove(lecture: Lecture) {
+    setRemovingId(lecture.id)
+    await removeLectureFromProgram(lecture.id, program.id)
+    setAssignedLectures(prev => prev.filter(l => l.id !== lecture.id))
+    setRemovingId(null)
+  }
 
   return (
     <div className="flex gap-0 h-[calc(100vh-8rem)]">
@@ -30,6 +69,7 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-1">
+            <StarToggle id={program.id} type="program" initialStarred={!!program.is_starred} />
             <h1 className="text-xl font-semibold tracking-tight">{program.name}</h1>
             <UniversityBadge universityName={program.university.name} />
           </div>
@@ -42,55 +82,161 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
               <span className="text-xs text-muted-foreground">· {program.faculty.name}</span>
             )}
           </div>
+          {program.url && (
+            <a
+              href={program.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors w-fit"
+            >
+              <ExternalLink className="h-3 w-3" />
+              External program page
+            </a>
+          )}
         </div>
 
         <Separator className="mb-4" />
 
-        {/* Lecture search */}
-        <div className="mb-3">
-          <SearchInput
-            placeholder="Search lectures..."
-            value={search}
-            onChange={setSearch}
-          />
+        {/* Assigned lectures */}
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+          Lectures · {assignedLectures.length}
         </div>
 
-        <div className="text-xs text-muted-foreground mb-3">
-          {filtered.length} {filtered.length === 1 ? 'lecture' : 'lectures'}
-        </div>
-
-        {/* Lecture list */}
-        <ScrollArea className="flex-1">
-          {filtered.length === 0 ? (
+        <ScrollArea className="flex-1 min-h-0">
+          {assignedLectures.length === 0 ? (
             <EmptyState
-              title="No lectures found"
-              description={search ? 'Try a different search term' : 'No lectures assigned to this program'}
+              title="No lectures assigned"
+              description="Use the search below to add lectures to this program"
               icon={BookOpen}
             />
           ) : (
             <div className="space-y-1 pr-4">
-              {filtered.map(lecture => (
-                <Link
-                  key={lecture.id}
-                  href={`/lectures/${lecture.id}`}
-                  className="block rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all duration-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">{lecture.title}</span>
-                    {lecture.lecture_type && (
-                      <Badge variant="outline" className="text-xs ml-2 shrink-0">
-                        {lecture.lecture_type}
-                      </Badge>
+              {assignedLectures.map(lecture => (
+                <div key={lecture.id} className="group flex items-center rounded-lg px-3 py-2.5 hover:bg-black/[0.03] transition-all duration-200">
+                  <Link href={`/lectures/${lecture.id}`} className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{lecture.title}</span>
+                      {lecture.lecture_type && (
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {lecture.lecture_type}
+                        </Badge>
+                      )}
+                    </div>
+                    {lecture.semester && (
+                      <span className="text-xs text-muted-foreground">{lecture.semester}</span>
                     )}
-                  </div>
-                  {lecture.semester && (
-                    <span className="text-xs text-muted-foreground">{lecture.semester}</span>
-                  )}
-                </Link>
+                  </Link>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={removingId === lecture.id}
+                        className="ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-black/[0.06] text-muted-foreground hover:text-foreground disabled:opacity-50"
+                        aria-label="Remove lecture from program"
+                      >
+                        {removingId === lecture.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <X className="h-3.5 w-3.5" />
+                        }
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove lecture?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          &quot;{lecture.title}&quot; will be removed from this program. You can add it back at any time.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleRemove(lecture)}>
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               ))}
             </div>
           )}
         </ScrollArea>
+
+        <Separator className="my-4" />
+
+        {/* Add lecture section */}
+        <div className="flex-shrink-0">
+          <div className="flex items-center gap-1.5 mb-3">
+            <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Add a lecture to this program
+            </span>
+          </div>
+
+          <SearchInput
+            placeholder="Search all lectures…"
+            value={addSearch}
+            onChange={setAddSearch}
+          />
+
+          <div className="mt-2 rounded-lg border border-black/[0.06] overflow-hidden max-h-[220px] overflow-y-auto">
+            {isSearching ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-xs">Searching…</span>
+              </div>
+            ) : addSearch.trim() === '' ? (
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                Type to search all lectures
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-muted-foreground text-center">
+                No lectures found
+              </div>
+            ) : (
+              <div className="divide-y divide-black/[0.04]">
+                {searchResults.map(lecture => (
+                  <div
+                    key={lecture.id}
+                    className="flex items-center justify-between px-3 py-2.5 hover:bg-black/[0.02]"
+                  >
+                    <div className="min-w-0 mr-3">
+                      <p className="text-sm font-medium truncate">{lecture.title}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <UniversityBadge universityName={lecture.university.name} />
+                        {lecture.semester && (
+                          <span className="text-xs text-muted-foreground">{lecture.semester}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {lecture.lecture_type && (
+                        <Badge variant="outline" className="text-xs">
+                          {lecture.lecture_type}
+                        </Badge>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs"
+                        disabled={addingId === lecture.id}
+                        onClick={() => handleAdd(lecture)}
+                      >
+                        {addingId === lecture.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Right panel: 40% — PDF viewer */}
@@ -111,7 +257,7 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
           {program.studienordnung_url ? (
             <div className="h-full flex flex-col">
               <iframe
-                src={program.studienordnung_url}
+                src={`/api/pdf-proxy?url=${encodeURIComponent(program.studienordnung_url)}#toolbar=0&navpanes=0&scrollbar=0`}
                 className="flex-1 w-full"
                 title="Curriculum document"
                 onError={() => {/* silent — user can use open in new tab */}}
@@ -133,19 +279,6 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
           )}
         </div>
 
-        {program.url && (
-          <div className="mt-3">
-            <a
-              href={program.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-            >
-              <ExternalLink className="h-3 w-3" />
-              External program page
-            </a>
-          </div>
-        )}
       </div>
     </div>
   )

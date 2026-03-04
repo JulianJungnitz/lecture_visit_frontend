@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
-const words = ['Courage', 'Lecture visits', 'Applications', ];
+const words = ['Lecture visits', 'Applications','for You' ];
 
 export default function DemoOne() {
     const [currentIndex, setCurrentIndex] = useState(0);
