@@ -53,6 +53,7 @@ export type Professor = {
   gender: ProfessorGender
   department: string | null
   source_url: string | null
+  notes: string | null
 }
 
 export type LectureSchedule = {
@@ -96,4 +97,8 @@ export type LectureWithDetails = Lecture & {
   professors: Professor[]
   schedules: LectureSchedule[]
   study_programs: StudyProgram[]
+}
+
+export type ProfessorWithUniversity = Professor & {
+  university: University
 }

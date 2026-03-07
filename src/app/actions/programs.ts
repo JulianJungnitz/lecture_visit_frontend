@@ -22,7 +22,7 @@ export async function searchAllLectures(query: string, excludeIds: string[], uni
   }
 
   const { data } = await q.order('title').limit(20)
-  return (data ?? []) as LectureSearchResult[]
+  return (data ?? []) as unknown as LectureSearchResult[]
 }
 
 export async function addLectureToProgram(lectureId: string, programId: string, obligation: string | null = null): Promise<void> {

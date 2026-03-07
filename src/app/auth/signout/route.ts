@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   await supabase.auth.signOut()
 
   const redirectUrl = request.nextUrl.clone()
-  redirectUrl.pathname = '/auth/login'
+  redirectUrl.pathname = '/'
 
   const redirect = NextResponse.redirect(redirectUrl)
   // Copy cleared cookies to redirect response
