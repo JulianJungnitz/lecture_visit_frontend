@@ -14,9 +14,9 @@ export default async function ProgramsPage({
   const parsedPage = params.page ? parseInt(params.page, 10) : 1
   const page = isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
   const search = params.q?.trim() ?? ''
-  const universityFilter = params.university ?? ''
-  const degreeFilter = params.degree ?? ''
-  const categoryFilter = params.category ?? ''
+  const universityFilters = params.university?.split(',').filter(Boolean) ?? []
+  const degreeFilters = params.degree?.split(',').filter(Boolean) ?? []
+  const categoryFilters = params.category?.split(',').filter(Boolean) ?? []
   const starredFilter = params.starred === 'true'
 
   const offset = (page - 1) * PAGE_SIZE
@@ -52,15 +52,15 @@ export default async function ProgramsPage({
   if (search) {
     query = query.ilike('name', `%${search}%`)
   }
-  if (universityFilter) {
-    const uni = (universities ?? []).find(u => u.name === universityFilter)
-    if (uni) query = query.eq('university_id', uni.id)
+  if (universityFilters.length > 0) {
+    const uniIds = (universities ?? []).filter(u => universityFilters.includes(u.name)).map(u => u.id)
+    if (uniIds.length > 0) query = query.in('university_id', uniIds)
   }
-  if (degreeFilter) {
-    query = query.eq('degree_type', degreeFilter)
+  if (degreeFilters.length > 0) {
+    query = query.in('degree_type', degreeFilters)
   }
-  if (categoryFilter) {
-    query = query.eq('category', categoryFilter)
+  if (categoryFilters.length > 0) {
+    query = query.in('category', categoryFilters)
   }
   if (starredFilter) {
     query = query.eq('is_starred', true)

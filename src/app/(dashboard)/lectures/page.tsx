@@ -16,8 +16,8 @@ export default async function LecturesPage({
   const parsedPage = params.page ? parseInt(params.page, 10) : 1
   const page = isNaN(parsedPage) ? 1 : Math.max(1, parsedPage)
   const search = params.q?.trim() ?? ''
-  const universityFilter = params.university ?? ''
-  const typeFilter = params.type ?? ''
+  const universityFilters = params.university?.split(',').filter(Boolean) ?? []
+  const typeFilters = params.type?.split(',').filter(Boolean) ?? []
   const starredFilter = params.starred === 'true'
 
   const offset = (page - 1) * PAGE_SIZE
@@ -45,12 +45,12 @@ export default async function LecturesPage({
   if (search) {
     query = query.ilike('title', `%${search}%`)
   }
-  if (universityFilter) {
-    const uni = (universities ?? []).find(u => u.name === universityFilter)
-    if (uni) query = query.eq('university_id', uni.id)
+  if (universityFilters.length > 0) {
+    const uniIds = (universities ?? []).filter(u => universityFilters.includes(u.name)).map(u => u.id)
+    if (uniIds.length > 0) query = query.in('university_id', uniIds)
   }
-  if (typeFilter) {
-    query = query.eq('lecture_type', typeFilter)
+  if (typeFilters.length > 0) {
+    query = query.in('lecture_type', typeFilters)
   }
   if (starredFilter) {
     query = query.eq('is_starred', true)

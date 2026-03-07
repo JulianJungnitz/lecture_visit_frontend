@@ -10,13 +10,7 @@ import { EmptyState } from '@/components/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/pagination'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { MultiFilterSelect } from '@/components/multi-filter-select'
 import { toggleProgramStar } from '@/app/actions/programs'
 import type { StudyProgramWithUniversity } from '@/types/database'
 
@@ -48,20 +42,24 @@ export function ProgramSearch({
   )
 
   const currentSearch = searchParams.get('q') ?? ''
-  const currentUniversity = searchParams.get('university') ?? '__all__'
-  const currentDegreeType = searchParams.get('degree') ?? '__all__'
-  const currentCategory = searchParams.get('category') ?? '__all__'
+  const currentUniversities = searchParams.get('university')?.split(',').filter(Boolean) ?? []
+  const currentDegreeTypes = searchParams.get('degree')?.split(',').filter(Boolean) ?? []
+  const currentCategories = searchParams.get('category')?.split(',').filter(Boolean) ?? []
   const isStarredFilter = searchParams.get('starred') === 'true'
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams.toString())
-    if (!value || value === '__all__') {
+    if (!value) {
       params.delete(key)
     } else {
       params.set(key, value)
     }
     params.delete('page')
     router.replace(`?${params.toString()}`)
+  }
+
+  function updateMultiParam(key: string, values: string[]) {
+    updateParam(key, values.join(','))
   }
 
   function handleStar(e: React.MouseEvent, id: string) {
@@ -93,48 +91,30 @@ export function ProgramSearch({
           />
         </div>
 
-        <Select value={currentUniversity} onValueChange={(v) => updateParam('university', v)}>
-          <SelectTrigger className="w-40 h-9 text-sm">
-            <SelectValue placeholder="University" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All universities</SelectItem>
-            {universities.map((u) => (
-              <SelectItem key={u} value={u}>
-                {u}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiFilterSelect
+          label="University"
+          options={universities}
+          selected={currentUniversities}
+          onChange={(v) => updateMultiParam('university', v)}
+          className="w-40"
+        />
 
-        <Select value={currentDegreeType} onValueChange={(v) => updateParam('degree', v)}>
-          <SelectTrigger className="w-40 h-9 text-sm">
-            <SelectValue placeholder="Degree type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All degrees</SelectItem>
-            {degreeTypes.map((d) => (
-              <SelectItem key={d} value={d}>
-                {d}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiFilterSelect
+          label="Degree type"
+          options={degreeTypes}
+          selected={currentDegreeTypes}
+          onChange={(v) => updateMultiParam('degree', v)}
+          className="w-40"
+        />
 
         {categories.length > 0 && (
-          <Select value={currentCategory} onValueChange={(v) => updateParam('category', v)}>
-            <SelectTrigger className="w-44 h-9 text-sm">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All categories</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiFilterSelect
+            label="Category"
+            options={categories}
+            selected={currentCategories}
+            onChange={(v) => updateMultiParam('category', v)}
+            className="w-44"
+          />
         )}
 
         <Button
