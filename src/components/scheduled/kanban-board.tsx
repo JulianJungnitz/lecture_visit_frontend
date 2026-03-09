@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
   DndContext,
   DragOverlay,
   closestCorners,
-  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -13,6 +12,7 @@ import {
   type DragOverEvent,
   type DragStartEvent,
   PointerSensor,
+  type Modifier,
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { Button } from '@/components/ui/button'
@@ -29,11 +29,9 @@ type LectureWithUniversityAndOwner = Lecture & {
   owner_profile?: Profile | null
 }
 
-// UI column names
 const STATUSES = ['Not Contacted', 'Emailed', 'Confirmed', 'Declined', 'Done'] as const
 type Status = (typeof STATUSES)[number]
 
-// Map between UI column names and database enum values
 const statusToDbEnum: Record<Status, OutreachStatus> = {
   'Not Contacted': 'not_contacted',
   'Emailed': 'emailed',
@@ -42,7 +40,6 @@ const statusToDbEnum: Record<Status, OutreachStatus> = {
   'Done': 'done'
 }
 
-// Map from database enum to UI column names
 const dbEnumToStatus: Record<OutreachStatus, Status> = {
   'not_contacted': 'Not Contacted',
   'emailed': 'Emailed',
@@ -66,6 +63,13 @@ type Props = {
   currentUserId?: string
 }
 
+// Compensate for sidebar width only (w-56 = 14rem = 224px)
+const sidebarOffsetModifier: Modifier = ({ transform }) => ({
+  ...transform,
+  x: transform.x - 244,
+  y: transform.y - 80,
+})
+
 export function KanbanBoard({ lectures, currentUserId }: Props) {
   const [columns, setColumns] = useState<Columns>(emptyColumns)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -74,7 +78,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
 
-  // Initialize columns from lectures based on their outreach_status
   useEffect(() => {
     const newColumns: Columns = {
       'Not Contacted': [],
@@ -84,7 +87,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
       'Done': [],
     }
 
-    // Filter lectures that have owners
     const lecturesWithOwners = lectures.filter(l => l.owner !== null)
 
     lecturesWithOwners.forEach(lecture => {
@@ -119,7 +121,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
 
   const excludeIds = useMemo(() => {
     const ids = new Set<string>()
-    // Exclude all lectures that have an owner (are already on someone's board)
     lectures.forEach(lecture => {
       if (lecture.owner) {
         ids.add(lecture.id)
@@ -128,7 +129,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     return ids
   }, [lectures])
 
-  // Filter columns based on view
   const filteredColumns = useMemo(() => {
     if (view === 'personal' && currentUserId) {
       const filtered: Columns = { ...emptyColumns }
@@ -144,9 +144,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
 
   const findColumn = useCallback(
     (id: string): Status | undefined => {
-      // Check if id is a column id
       if (STATUSES.includes(id as Status)) return id as Status
-      // Find which column contains this item
       for (const status of STATUSES) {
         if (columns[status].some((item) => item.id === id)) return status
       }
@@ -176,7 +174,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
 
         const [moved] = activeItems.splice(activeIndex, 1)
 
-        // Update the local state immediately for responsiveness
         if (moved && activeCol !== overCol) {
           const dbStatus = statusToDbEnum[overCol]
           moved.lecture = { ...moved.lecture, outreach_status: dbStatus }
@@ -203,21 +200,17 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
       const overCol = findColumn(String(over.id))
       if (!activeCol || !overCol) return
 
-      // Find the lecture that was dragged
       const draggedItem = columns[activeCol].find(item => item.id === active.id)
       if (!draggedItem) return
 
-      // Extract lecture ID from the kanban item ID (format: "kanban-{lecture.id}")
       const lectureId = draggedItem.lecture.id
 
-      // If moved to a different column, update the status in the database
       if (activeCol !== overCol) {
         try {
           const dbStatus = statusToDbEnum[overCol]
           await updateLectureStatus(lectureId, dbStatus)
         } catch (error) {
           console.error('Failed to update lecture status:', error)
-          // Optionally revert the UI change here
           return
         }
       }
@@ -236,8 +229,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
   )
 
   const handleAddLecture = useCallback((lecture: LectureWithUniversityAndOwner) => {
-    // This is called after the server action has already set the owner
-    // We just need to update the local state to show the lecture on the board
     const lectureWithUpdates = {
       ...lecture,
       owner: currentUserId || lecture.owner,
@@ -261,11 +252,9 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
 
   const handleClosePanel = useCallback(() => {
     setIsPanelOpen(false)
-    // Clear selected lecture after animation
     setTimeout(() => setSelectedLecture(null), 300)
   }, [])
 
-  // Find the active item being dragged
   const activeItem = useMemo(() => {
     if (!activeId) return null
     for (const status of STATUSES) {
@@ -276,7 +265,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
   }, [activeId, columns])
 
   return (
-    <div className="relative flex flex-col h-[calc(100vh-7rem)]">
+    <div className="flex flex-col h-[calc(100vh-7rem)]">
       <div className="mb-6 flex-shrink-0">
         <h1 className="text-2xl font-semibold tracking-tight">Lecture visits outreach</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -334,16 +323,12 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
           ))}
         </div>
 
-        <DragOverlay
-          dropAnimation={null}
-          style={{
-            cursor: 'grabbing',
-          }}
-        >
+        <DragOverlay dropAnimation={null} modifiers={[sidebarOffsetModifier]}>
           {activeItem ? (
             <KanbanCard
               item={activeItem}
               showOwner={view === 'all'}
+              isOverlay
             />
           ) : null}
         </DragOverlay>

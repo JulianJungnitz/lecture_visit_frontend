@@ -18,11 +18,13 @@ export type KanbanItem = {
 export function KanbanCard({
   item,
   onCardClick,
-  showOwner = false
+  showOwner = false,
+  isOverlay = false,
 }: {
   item: KanbanItem
   onCardClick?: (item: KanbanItem) => void
   showOwner?: boolean
+  isOverlay?: boolean
 }) {
   const {
     attributes,
@@ -33,13 +35,14 @@ export function KanbanCard({
     isDragging,
   } = useSortable({ id: item.id })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  const style = isOverlay
+    ? undefined
+    : {
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only trigger click if not dragging and click handler exists
     if (!isDragging && onCardClick) {
       onCardClick(item)
     }
@@ -47,15 +50,16 @@ export function KanbanCard({
 
   return (
     <Card
-      ref={setNodeRef}
+      ref={isOverlay ? undefined : setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      onClick={handleClick}
+      {...(isOverlay ? {} : attributes)}
+      {...(isOverlay ? {} : listeners)}
+      onClick={isOverlay ? undefined : handleClick}
       className={cn(
         'p-3 select-none transition-colors',
-        isDragging ? 'opacity-50 shadow-lg cursor-grabbing' : 'cursor-grab hover:bg-muted/50',
-        onCardClick && !isDragging && 'cursor-pointer'
+        isDragging && !isOverlay ? 'opacity-50' : '',
+        isOverlay ? 'shadow-lg cursor-grabbing' : 'cursor-grab hover:bg-muted/50',
+        onCardClick && !isDragging && !isOverlay && 'cursor-pointer'
       )}
     >
       <p className="text-sm font-medium leading-snug">{item.lecture.title}</p>
