@@ -9,7 +9,7 @@ const PAGE_SIZE = 50
 export default async function LecturesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; university?: string; type?: string; starred?: string; page?: string }>
+  searchParams: Promise<{ q?: string; university?: string; type?: string; starred?: string; lecturesOnly?: string; page?: string }>
 }) {
   const supabase = await createClient()
   const params = await searchParams
@@ -37,11 +37,18 @@ export default async function LecturesPage({
     (typeData ?? []).map(r => r.lecture_type).filter(Boolean)
   )].sort() as string[]
 
+  // "Lectures only" filter: types containing Vorlesung or Lecture
+  const lecturesOnlyFilter = params.lecturesOnly === 'true'
+  const lectureOnlyTypes = lectureTypes.filter(t => /vorlesung|lecture/i.test(t))
+
   // Build paginated + filtered query
   let query = supabase
     .from('lectures')
     .select('*, university:universities(id, name)', { count: 'exact' })
 
+  if (lecturesOnlyFilter && lectureOnlyTypes.length > 0) {
+    query = query.in('lecture_type', lectureOnlyTypes)
+  }
   if (search) {
     query = query.ilike('title', `%${search}%`)
   }
@@ -75,6 +82,7 @@ export default async function LecturesPage({
         lectures={lectures}
         universities={(universities ?? []).map(u => u.name)}
         lectureTypes={lectureTypes}
+        lecturesOnly={lecturesOnlyFilter}
         totalCount={totalCount}
         page={page}
         totalPages={totalPages}

@@ -20,6 +20,7 @@ interface LectureSearchProps {
   lectures: LectureWithUniversity[]
   universities: string[]
   lectureTypes: string[]
+  lecturesOnly: boolean
   totalCount: number
   page: number
   totalPages: number
@@ -29,6 +30,7 @@ export function LectureSearch({
   lectures,
   universities,
   lectureTypes,
+  lecturesOnly,
   totalCount,
   page,
   totalPages,
@@ -105,6 +107,17 @@ export function LectureSearch({
           onChange={(v) => updateMultiParam('type', v)}
           className="w-44"
         />
+
+        <Button
+          variant={lecturesOnly ? 'default' : 'outline'}
+          size="sm"
+          className="h-9 px-3"
+          onClick={() => updateParam('lecturesOnly', lecturesOnly ? '' : 'true')}
+          title={lecturesOnly ? 'Show all types' : 'Show lectures only'}
+        >
+          <BookOpen className="h-4 w-4 mr-1" />
+          Lectures only
+        </Button>
 
         <Button
           variant={isStarredFilter ? 'default' : 'outline'}
