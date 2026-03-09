@@ -10,6 +10,7 @@ const LABELS: Record<string, string> = {
   programs: 'Programs',
   lectures: 'Lectures',
   professors: 'Professors',
+  settings: 'Settings',
 }
 
 export function Breadcrumbs() {

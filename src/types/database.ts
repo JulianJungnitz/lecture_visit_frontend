@@ -23,10 +23,12 @@ export type StudyProgram = {
   is_starred: boolean | null
 }
 
-export type SemesterType = 
+export type SemesterType =
   | 'SoSe 2026' | 'WiSe 2026/27' | 'SoSe 2027' | 'WiSe 2027/28'
   | 'SoSe 2028' | 'WiSe 2028/29' | 'SoSe 2029' | 'WiSe 2029/30'
   | 'SoSe 2030' | 'WiSe 2030/31'
+
+export type OutreachStatus = 'not_contacted' | 'emailed' | 'confirmed' | 'declined' | 'done'
 
 export type Lecture = {
   id: string
@@ -39,6 +41,8 @@ export type Lecture = {
   external_id: string | null
   is_starred: boolean | null
   notes: string | null
+  owner: string | null
+  outreach_status: OutreachStatus | null
 }
 
 export type ProfessorGender = 'male' | 'female' | 'other' | 'unknown'
@@ -101,4 +105,21 @@ export type LectureWithDetails = Lecture & {
 
 export type ProfessorWithUniversity = Professor & {
   university: University
+}
+
+export type Profile = {
+  id: string
+  display_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type LectureWithOwnerProfile = Lecture & {
+  owner_profile: Profile | null
+}
+
+// Parameter type for settings
+export type Parameter = {
+  key: string
+  value: string | null
 }

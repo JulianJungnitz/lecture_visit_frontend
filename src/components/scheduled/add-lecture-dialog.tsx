@@ -9,6 +9,7 @@ import { UniversityBadge } from '@/components/university-badge'
 import { X, Search, Plus, Mail, MapPin, ExternalLink, Clock, Users, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { addLectureToBoard } from '@/app/actions/lecture-board'
 import type { Lecture, University, Professor, LectureSchedule, StudyProgram } from '@/types/database'
 
 type LectureWithUniversity = Lecture & { university?: University | null }
@@ -32,6 +33,7 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [details, setDetails] = useState<LectureDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [addingLecture, setAddingLecture] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -80,6 +82,19 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
       fetchDetails(lectureId)
     }
   }, [selectedId, fetchDetails])
+
+  const handleAddLecture = useCallback(async (lecture: LectureWithUniversity) => {
+    try {
+      setAddingLecture(true)
+      await addLectureToBoard(lecture.id)
+      onSelect(lecture) // Still call onSelect to update local state
+      onClose()
+    } catch (error) {
+      console.error('Failed to add lecture to board:', error)
+    } finally {
+      setAddingLecture(false)
+    }
+  }, [onSelect, onClose])
 
   const filtered = useMemo(() => {
     const available = lectures.filter(l => !excludeIds.has(l.id))
@@ -158,14 +173,18 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onSelect(lecture)
-                        onClose()
+                        handleAddLecture(lecture)
                       }}
-                      className="shrink-0 mt-0.5 p-1 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-foreground transition-all"
+                      disabled={addingLecture}
+                      className="shrink-0 mt-0.5 p-1 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-foreground transition-all disabled:opacity-50"
                       aria-label="Add to board"
                       title="Add to board"
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      {addingLecture ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
                 ))
@@ -183,13 +202,15 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
                 {selectedLecture && (
                   <button
                     type="button"
-                    onClick={() => {
-                      onSelect(selectedLecture)
-                      onClose()
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    onClick={() => handleAddLecture(selectedLecture)}
+                    disabled={addingLecture}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-black text-white hover:bg-black/90 transition-colors disabled:opacity-50"
                   >
-                    <Plus className="h-3 w-3" />
+                    {addingLecture ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Plus className="h-3 w-3" />
+                    )}
                     Add to board
                   </button>
                 )}
