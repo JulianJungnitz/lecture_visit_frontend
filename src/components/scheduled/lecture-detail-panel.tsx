@@ -5,7 +5,8 @@ import { SidePanel } from '@/components/ui/side-panel'
 import { Badge } from '@/components/ui/badge'
 import { UniversityBadge } from '@/components/university-badge'
 import { Separator } from '@/components/ui/separator'
-import { Loader2, Mail, ExternalLink, Users, Clock, MapPin, Star } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Loader2, Mail, ExternalLink, Users, Clock, MapPin, Star, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Lecture, University, Professor, LectureSchedule, StudyProgram } from '@/types/database'
 
@@ -23,9 +24,11 @@ type Props = {
   open: boolean
   onClose: () => void
   lecture?: LectureWithUniversity
+  onAddToBoard?: (lecture: LectureWithUniversity) => void
+  addingToBoard?: boolean
 }
 
-export function LectureDetailPanel({ lectureId, open, onClose, lecture }: Props) {
+export function LectureDetailPanel({ lectureId, open, onClose, lecture, onAddToBoard, addingToBoard }: Props) {
   const [details, setDetails] = useState<LectureDetails | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -85,12 +88,31 @@ export function LectureDetailPanel({ lectureId, open, onClose, lecture }: Props)
   }, [open, lectureId, fetchDetails])
 
   const lectureTitle = details?.lecture?.title || lecture?.title || 'Lecture Details'
+  const showAddToBoard =
+    !loading && details && !details.lecture.owner && onAddToBoard != null
 
   return (
     <SidePanel
       open={open}
       onClose={onClose}
       title={lectureTitle}
+      headerActions={
+        showAddToBoard && details ? (
+          <button
+            type="button"
+            onClick={() => onAddToBoard(details.lecture)}
+            disabled={addingToBoard}
+            className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-black text-white hover:bg-black/90 transition-colors disabled:opacity-50"
+          >
+            {addingToBoard ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Plus className="h-3 w-3" />
+            )}
+            Add to board
+          </button>
+        ) : undefined
+      }
     >
       {loading && (
         <div className="flex items-center justify-center py-12">
@@ -192,34 +214,71 @@ export function LectureDetailPanel({ lectureId, open, onClose, lecture }: Props)
               <h3 className="font-medium">Schedule ({details.schedules.length})</h3>
             </div>
             {details.schedules.length > 0 ? (
-              <div className="space-y-2">
-                {details.schedules.map((schedule) => (
-                  <div
-                    key={schedule.id}
-                    className="p-3 rounded-lg border bg-card text-sm"
-                  >
-                    {schedule.day_time && (
-                      <div className="font-medium">{schedule.day_time}</div>
-                    )}
-                    {schedule.frequency && (
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {schedule.frequency}
-                      </div>
-                    )}
-                    {schedule.location && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <MapPin className="h-3 w-3" />
-                        {schedule.location}
-                      </div>
-                    )}
-                    {schedule.date_range && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {schedule.date_range}
-                      </div>
-                    )}
+              (() => {
+                const hasFrequency = details.schedules.some((s) => s.frequency)
+                const hasDateRange = details.schedules.some((s) => s.date_range)
+                const hasLocation = details.schedules.some((s) => s.location)
+                const hasRoomUrl = details.schedules.some((s) => s.room_url)
+                return (
+                  <div className="rounded-xl border border-black/[0.06] overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Day &amp; Time</TableHead>
+                          {hasFrequency && <TableHead>Frequency</TableHead>}
+                          {hasDateRange && <TableHead>Date Range</TableHead>}
+                          {hasLocation && <TableHead>Location</TableHead>}
+                          {hasRoomUrl && <TableHead>Room</TableHead>}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {details.schedules.map((schedule) => (
+                          <TableRow key={schedule.id}>
+                            <TableCell className="font-medium text-sm">
+                              {schedule.day_time ?? '—'}
+                            </TableCell>
+                            {hasFrequency && (
+                              <TableCell className="text-sm text-muted-foreground">
+                                {schedule.frequency ?? '—'}
+                              </TableCell>
+                            )}
+                            {hasDateRange && (
+                              <TableCell className="text-sm text-muted-foreground">
+                                {schedule.date_range ?? '—'}
+                              </TableCell>
+                            )}
+                            {hasLocation && (
+                              <TableCell className="text-sm text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 shrink-0" />
+                                  {schedule.location ?? '—'}
+                                </span>
+                              </TableCell>
+                            )}
+                            {hasRoomUrl && (
+                              <TableCell className="text-sm">
+                                {schedule.room_url ? (
+                                  <a
+                                    href={schedule.room_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    Room
+                                  </a>
+                                ) : (
+                                  '—'
+                                )}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
-                ))}
-              </div>
+                )
+              })()
             ) : (
               <p className="text-sm text-muted-foreground">No schedule information</p>
             )}
@@ -242,9 +301,9 @@ export function LectureDetailPanel({ lectureId, open, onClose, lecture }: Props)
                   >
                     <div className="font-medium text-sm">{program.name}</div>
                     <div className="flex items-center gap-2 mt-1">
-                      {program.degree && (
+                      {program.degree_type && (
                         <Badge variant="secondary" className="text-xs">
-                          {program.degree}
+                          {program.degree_type}
                         </Badge>
                       )}
                       {program.university && (

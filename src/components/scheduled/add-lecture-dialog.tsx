@@ -1,18 +1,32 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { UniversityBadge } from '@/components/university-badge'
-import { X, Search, Plus, Mail, MapPin, ExternalLink, Clock, Users, Loader2 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { MultiFilterSelect } from '@/components/multi-filter-select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Separator } from '@/components/ui/separator'
+import { X, Search, Plus, Loader2, Mail, ExternalLink, Clock, Users, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { addLectureToBoard } from '@/app/actions/lecture-board'
-import type { Lecture, University, Professor, LectureSchedule, StudyProgram } from '@/types/database'
-
-type LectureWithUniversity = Lecture & { university?: University | null }
+import {
+  getAddLectureFilterOptions,
+  searchLecturesForBoard,
+  type LectureWithUniversity,
+  type AddLectureFilterOptions,
+} from '@/app/actions/search-lectures'
+import type { Professor, LectureSchedule, StudyProgram, University } from '@/types/database'
 
 type LectureDetails = {
   professors: Professor[]
@@ -23,52 +37,51 @@ type LectureDetails = {
 type Props = {
   open: boolean
   onClose: () => void
-  lectures: LectureWithUniversity[]
   onSelect: (lecture: LectureWithUniversity) => void
   excludeIds: Set<string>
 }
 
-export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds }: Props) {
-  const [search, setSearch] = useState('')
+const TITLE_DEBOUNCE_MS = 300
+const SEARCH_LIMIT = 50
+
+export function AddLectureDialog({
+  open,
+  onClose,
+  onSelect,
+  excludeIds,
+}: Props) {
+  const [titleSearch, setTitleSearch] = useState('')
+  const [titleDebounced, setTitleDebounced] = useState('')
+  const [locationFilter, setLocationFilter] = useState<string>('')
+  const [dayFilter, setDayFilter] = useState<string>('')
+  const [universityId, setUniversityId] = useState<string>('')
+  const [starredFilter, setStarredFilter] = useState<'all' | 'starred'>('starred')
+  const [lectureTypeNames, setLectureTypeNames] = useState<string[]>([])
+  const [studyProgramNames, setStudyProgramNames] = useState<string[]>([])
+  const [results, setResults] = useState<LectureWithUniversity[]>([])
+  const [loading, setLoading] = useState(false)
+  const [addingId, setAddingId] = useState<string | null>(null)
+  const [filterOptions, setFilterOptions] = useState<AddLectureFilterOptions | null>(null)
+  const [filterOptionsLoading, setFilterOptionsLoading] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [details, setDetails] = useState<LectureDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
-  const [addingLecture, setAddingLecture] = useState(false)
+  const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (open) {
-      setSearch('')
-      setSelectedId(null)
-      setDetails(null)
-      setTimeout(() => inputRef.current?.focus(), 0)
-    }
-  }, [open])
+  const defaultTypeFilterAppliedRef = useRef(false)
 
   const fetchDetails = useCallback(async (lectureId: string) => {
     setLoadingDetails(true)
     setDetails(null)
     const supabase = createClient()
-
     const [professorsRes, schedulesRes, programsRes] = await Promise.all([
-      supabase
-        .from('lecture_professors')
-        .select('professor:professors(*)')
-        .eq('lecture_id', lectureId),
-      supabase
-        .from('lecture_schedules')
-        .select('*')
-        .eq('lecture_id', lectureId),
-      supabase
-        .from('lecture_study_programs')
-        .select('study_program:study_programs(*, university:universities(id, name))')
-        .eq('lecture_id', lectureId),
+      supabase.from('lecture_professors').select('professor:professors(*)').eq('lecture_id', lectureId),
+      supabase.from('lecture_schedules').select('*').eq('lecture_id', lectureId),
+      supabase.from('lecture_study_programs').select('study_program:study_programs(*, university:universities(id, name))').eq('lecture_id', lectureId),
     ])
-
-    const professors = (professorsRes.data?.map(l => (l as Record<string, unknown>).professor).filter(Boolean) ?? []) as unknown as Professor[]
+    const professors = (professorsRes.data?.map((l) => (l as Record<string, unknown>).professor).filter(Boolean) ?? []) as unknown as Professor[]
     const schedules = (schedulesRes.data ?? []) as LectureSchedule[]
-    const studyPrograms = (programsRes.data?.map(l => (l as Record<string, unknown>).study_program).filter(Boolean) ?? []) as unknown as (StudyProgram & { university: University })[]
-
+    const studyPrograms = (programsRes.data?.map((l) => (l as Record<string, unknown>).study_program).filter(Boolean) ?? []) as unknown as (StudyProgram & { university: University })[]
     setDetails({ professors, schedules, studyPrograms })
     setLoadingDetails(false)
   }, [])
@@ -83,88 +96,275 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
     }
   }, [selectedId, fetchDetails])
 
-  const handleAddLecture = useCallback(async (lecture: LectureWithUniversity) => {
-    try {
-      setAddingLecture(true)
-      await addLectureToBoard(lecture.id)
-      onSelect(lecture) // Still call onSelect to update local state
-      onClose()
-    } catch (error) {
-      console.error('Failed to add lecture to board:', error)
-    } finally {
-      setAddingLecture(false)
+  // Debounce title for search
+  useEffect(() => {
+    if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current)
+    titleDebounceRef.current = setTimeout(() => {
+      setTitleDebounced(titleSearch)
+    }, TITLE_DEBOUNCE_MS)
+    return () => {
+      if (titleDebounceRef.current) clearTimeout(titleDebounceRef.current)
     }
-  }, [onSelect, onClose])
+  }, [titleSearch])
 
-  const filtered = useMemo(() => {
-    const available = lectures.filter(l => !excludeIds.has(l.id))
-    if (!search.trim()) return available.slice(0, 50)
-    const q = search.toLowerCase()
-    return available.filter(l => l.title.toLowerCase().includes(q)).slice(0, 50)
-  }, [lectures, search, excludeIds])
+  // Load filter options when dialog opens
+  useEffect(() => {
+    if (!open) {
+      defaultTypeFilterAppliedRef.current = false
+      return
+    }
+    setFilterOptionsLoading(true)
+    getAddLectureFilterOptions()
+      .then((opts) => {
+        setFilterOptions(opts)
+        // Default to "lectures" (Vorlesung/lecture) when options first load
+        if (!defaultTypeFilterAppliedRef.current && opts.lectureTypes?.length) {
+          defaultTypeFilterAppliedRef.current = true
+          const lectureOnly = opts.lectureTypes.filter((t) => /vorlesung|lecture/i.test(t))
+          if (lectureOnly.length > 0) {
+            setLectureTypeNames(lectureOnly)
+          }
+        }
+      })
+      .finally(() => setFilterOptionsLoading(false))
+  }, [open])
 
-  const selectedLecture = useMemo(() => {
-    if (!selectedId) return null
-    return lectures.find(l => l.id === selectedId) ?? null
-  }, [selectedId, lectures])
+  // Run search when filters or excludeIds change
+  const runSearch = useCallback(async () => {
+    if (!open) return
+    setLoading(true)
+    const studyProgramIds =
+      filterOptions != null && studyProgramNames.length > 0
+        ? studyProgramNames
+            .map((name) => filterOptions.studyPrograms.find((p) => p.name === name)?.id)
+            .filter((id): id is string => id != null)
+        : undefined
+    const isStarred = starredFilter === 'starred' ? true : undefined
+    const lectureTypes =
+      lectureTypeNames.length > 0 ? lectureTypeNames : undefined
+
+    try {
+      const data = await searchLecturesForBoard({
+        title: titleDebounced.trim() || undefined,
+        location: locationFilter.trim() || undefined,
+        dayOfWeek: dayFilter.trim() || undefined,
+        universityIds: universityId.trim() ? [universityId] : undefined,
+        studyProgramIds,
+        isStarred,
+        lectureTypes,
+        excludeIds: Array.from(excludeIds),
+        limit: SEARCH_LIMIT,
+      })
+      setResults(data)
+    } finally {
+      setLoading(false)
+    }
+  }, [
+    open,
+    titleDebounced,
+    locationFilter,
+    dayFilter,
+    universityId,
+    starredFilter,
+    lectureTypeNames,
+    studyProgramNames,
+    filterOptions,
+    excludeIds,
+  ])
+
+  useEffect(() => {
+    if (!open) return
+    runSearch()
+  }, [open, runSearch])
+
+  // Reset local state when dialog opens (defaults for starred/type applied in filter-options effect)
+  useEffect(() => {
+    if (open) {
+      setTitleSearch('')
+      setTitleDebounced('')
+      setLocationFilter('')
+      setDayFilter('')
+      setUniversityId('')
+      setStarredFilter('starred')
+      setLectureTypeNames([])
+      setStudyProgramNames([])
+      setSelectedId(null)
+      setDetails(null)
+      setTimeout(() => inputRef.current?.focus(), 0)
+    }
+  }, [open])
+
+  const selectedLecture = results.find((l) => l.id === selectedId) ?? null
+
+  const handleAddLecture = useCallback(
+    async (lecture: LectureWithUniversity) => {
+      try {
+        setAddingId(lecture.id)
+        await addLectureToBoard(lecture.id)
+        onSelect(lecture)
+        setResults((prev) => prev.filter((l) => l.id !== lecture.id))
+      } catch (error) {
+        console.error('Failed to add lecture to board:', error)
+      } finally {
+        setAddingId(null)
+      }
+    },
+    [onSelect]
+  )
 
   if (!open) return null
 
+  const studyProgramOptions =
+    filterOptions?.studyPrograms.map((p) => p.name) ?? []
+
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center px-6 pt-[10vh]">
-      <div className="fixed inset-0 bg-black/40" onClick={onClose} />
-      <div className={cn(
-        'relative z-50 w-full rounded-xl border bg-background shadow-lg animate-fade-in-up flex transition-all duration-200 overflow-hidden',
-        selectedId ? 'max-w-[1100px]' : 'max-w-2xl'
-      )}>
-        {/* Left panel: search + list */}
-        <div className={cn('flex flex-col min-w-0 overflow-hidden', selectedId ? 'w-[520px] shrink-0 border-r' : 'w-full')}>
-          <div className="flex items-center gap-2 border-b px-5 py-4">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-            <Input
-              ref={inputRef}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search lectures..."
-              className="border-0 shadow-none focus-visible:ring-0 px-0 h-auto"
-            />
-            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
-              <X className="h-4 w-4" />
-            </button>
+    <div className="fixed inset-0 z-50 flex items-start justify-center px-6 pt-[8vh] pb-[8vh]">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div
+        className={cn(
+          'relative z-50 w-full h-[calc(84vh)] rounded-2xl border border-border/70 bg-background shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] animate-fade-in-up flex transition-all duration-200 overflow-hidden',
+          selectedId ? 'max-w-7xl flex-row' : 'max-w-4xl flex-col'
+        )}
+      >
+        {/* Left: header + filters + list */}
+        <div className={cn('flex flex-col min-w-0 overflow-hidden', selectedId && 'w-[min(640px,100%)] shrink-0 border-r border-border/60')}>
+          {/* Minimal variant: clear header and subtitle */}
+          <div className="border-b border-border/60 px-5 pt-5 pb-4 pr-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Add lectures</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">Find and coordinate university lecture visits.</p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg p-2 -mt-1 shrink-0 transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-4">
+              <div className="flex items-center h-9 gap-2 flex-1 min-w-[140px] max-w-full">
+                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  value={titleSearch}
+                  onChange={(e) => setTitleSearch(e.target.value)}
+                  placeholder="Search by title..."
+                  className="h-9 flex-1 min-w-0 border-border/70 bg-muted/30 focus:bg-background rounded-lg text-sm"
+                />
+              </div>
+              <Select
+                value={locationFilter || '__none__'}
+                onValueChange={(v) => setLocationFilter(v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger className="w-[8rem] h-9 text-sm shrink-0 border-border/70 bg-muted/30 rounded-lg">
+                  <SelectValue placeholder="Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">All locations</SelectItem>
+                  {(filterOptions?.locations ?? []).map((loc) => (
+                    <SelectItem key={loc} value={loc}>
+                      {loc}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={dayFilter || '__none__'}
+                onValueChange={(v) => setDayFilter(v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger className="w-[8.5rem] h-9 text-sm shrink-0 border-border/70 bg-muted/30 rounded-lg">
+                  <SelectValue placeholder="Day" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">All days</SelectItem>
+                  {(filterOptions?.days ?? []).map((d) => (
+                    <SelectItem key={d.value} value={d.value}>
+                      {d.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={universityId || '__none__'}
+                onValueChange={(v) => setUniversityId(v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger className="w-[10rem] h-9 text-sm shrink-0 border-border/70 bg-muted/30 rounded-lg">
+                  <SelectValue placeholder="University" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">All universities</SelectItem>
+                  {(filterOptions?.universities ?? []).map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={starredFilter}
+                onValueChange={(v) => setStarredFilter(v as 'all' | 'starred')}
+              >
+                <SelectTrigger className="w-[8.5rem] h-9 text-sm shrink-0 border-border/70 bg-muted/30 rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="starred">Starred only</SelectItem>
+                </SelectContent>
+              </Select>
+              <MultiFilterSelect
+                label="Type"
+                options={filterOptions?.lectureTypes ?? []}
+                selected={lectureTypeNames}
+                onChange={setLectureTypeNames}
+                className="w-[10rem] shrink-0"
+              />
+              <MultiFilterSelect
+                label="Study program"
+                options={studyProgramOptions}
+                selected={studyProgramNames}
+                onChange={setStudyProgramNames}
+                className="w-[12rem] shrink-0"
+              />
+            </div>
           </div>
-          <ScrollArea className="max-h-[480px]">
-            <div className={cn('p-3 divide-y divide-border/40', selectedId && 'pr-4')}>
-              {filtered.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">No lectures found</p>
+
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="px-4 py-2 divide-y divide-border/50">
+              {filterOptionsLoading && results.length === 0 ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : loading && results.length === 0 ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : results.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-12">
+                  No lectures found. Try changing filters.
+                </p>
               ) : (
-                filtered.map((lecture) => (
+                results.map((lecture) => (
                   <div
                     key={lecture.id}
                     className={cn(
-                      'group flex items-start gap-2 w-full text-left px-3.5 py-3 text-sm transition-colors cursor-pointer',
-                      selectedId === lecture.id ? 'bg-muted rounded-lg' : 'hover:bg-muted/50 rounded-lg'
+                      'group flex items-start gap-3 w-full text-left px-4 py-4 text-sm transition-colors cursor-pointer rounded-xl hover:bg-muted/40',
+                      selectedId === lecture.id && 'bg-muted/50'
                     )}
                     onClick={() => handleSelectLecture(lecture.id)}
                   >
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="font-medium overflow-hidden text-ellipsis whitespace-nowrap">{lecture.title}</p>
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        {lecture.university && (
-                          <UniversityBadge universityName={lecture.university.name} className="text-[10px] px-1.5 py-0" />
-                        )}
-                        {lecture.lecture_type && (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            {lecture.lecture_type}
-                          </Badge>
-                        )}
-                        {lecture.semester && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                            {lecture.semester}
-                          </Badge>
-                        )}
-                      </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {[lecture.university?.name, lecture.lecture_type, lecture.semester].filter(Boolean).join(' · ')}
+                      </p>
+                      <p className="font-semibold text-foreground line-clamp-2 break-words leading-snug">
+                        {lecture.title}
+                      </p>
                       {lecture.description && (
-                        <p className="text-xs text-muted-foreground mt-1 overflow-hidden text-ellipsis whitespace-nowrap">
+                        <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 break-words leading-relaxed">
                           {lecture.description}
                         </p>
                       )}
@@ -175,15 +375,18 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
                         e.stopPropagation()
                         handleAddLecture(lecture)
                       }}
-                      disabled={addingLecture}
-                      className="shrink-0 mt-0.5 p-1 rounded-md text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-accent hover:text-foreground transition-all disabled:opacity-50"
+                      disabled={addingId != null}
+                      className="shrink-0 self-center px-3 py-1.5 rounded-lg text-xs font-medium bg-foreground text-background hover:bg-foreground/90 opacity-100 transition-all disabled:opacity-50 flex items-center gap-1.5"
                       aria-label="Add to board"
                       title="Add to board"
                     >
-                      {addingLecture ? (
+                      {addingId === lecture.id ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       ) : (
-                        <Plus className="h-3.5 w-3.5" />
+                        <>
+                          <Plus className="h-3.5 w-3.5" />
+                          Add
+                        </>
                       )}
                     </button>
                   </div>
@@ -193,103 +396,107 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
           </ScrollArea>
         </div>
 
-        {/* Right panel: detail view */}
+        {/* Right: detail sidebar inside popup (minimal variant) */}
         {selectedId && (
-          <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between border-b px-5 py-4 gap-3">
-              <span className="text-sm font-medium truncate">Lecture details</span>
-              <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0 flex flex-col border-l border-border/60 bg-muted/20 overflow-hidden">
+            <div className="flex items-center justify-between gap-3 border-b border-border/60 px-5 py-4 shrink-0 bg-background min-w-0">
+              <span className="text-sm font-medium text-muted-foreground truncate min-w-0">Lecture details</span>
+              <div className="flex items-center gap-2 shrink-0">
                 {selectedLecture && (
                   <button
                     type="button"
                     onClick={() => handleAddLecture(selectedLecture)}
-                    disabled={addingLecture}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-md bg-black text-white hover:bg-black/90 transition-colors disabled:opacity-50"
+                    disabled={addingId != null}
+                    className="inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors disabled:opacity-50"
                   >
-                    {addingLecture ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                    {addingId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Plus className="h-3 w-3" />
+                      <Plus className="h-4 w-4" />
                     )}
-                    Add to board
+                    Add this lecture to board
                   </button>
                 )}
                 <button
                   type="button"
-                  onClick={() => { setSelectedId(null); setDetails(null) }}
-                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setSelectedId(null)
+                    setDetails(null)
+                  }}
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg p-2 transition-colors"
                   aria-label="Close detail"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
-            <ScrollArea className="max-h-[480px]">
-              <div className="p-5 space-y-5 overflow-hidden">
+            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
+              <div className="px-4 py-2 space-y-3 min-w-0">
                 {selectedLecture && (
                   <>
-                    {/* Header */}
-                    <div className="overflow-hidden">
-                      <h3 className="text-base font-semibold leading-tight break-words">{selectedLecture.title}</h3>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <div className="space-y-1.5">
+                      <h3 className="text-base font-semibold leading-tight break-words text-foreground">
+                        {selectedLecture.title}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {selectedLecture.university && (
                           <UniversityBadge universityName={selectedLecture.university.name} />
                         )}
                         {selectedLecture.lecture_type && (
-                          <Badge variant="secondary" className="text-xs">{selectedLecture.lecture_type}</Badge>
+                          <Badge variant="secondary" className="text-xs font-normal">
+                            {selectedLecture.lecture_type}
+                          </Badge>
                         )}
                         {selectedLecture.semester && (
-                          <Badge variant="outline" className="text-xs">{selectedLecture.semester}</Badge>
+                          <Badge variant="outline" className="text-xs font-normal">
+                            {selectedLecture.semester}
+                          </Badge>
                         )}
                       </div>
                       {selectedLecture.description && (
-                        <p className="mt-2 text-sm text-muted-foreground leading-relaxed break-words">{selectedLecture.description}</p>
+                        <p className="text-sm text-muted-foreground leading-snug break-words">
+                          {selectedLecture.description}
+                        </p>
                       )}
                       {selectedLecture.source_url && (
                         <a
                           href={selectedLecture.source_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="h-3.5 w-3.5" />
                           View on university website
                         </a>
                       )}
-                      {selectedLecture.notes && (
-                        <div className="mt-2 p-2.5 rounded-md bg-muted/50 text-xs text-muted-foreground break-words">
-                          {selectedLecture.notes}
-                        </div>
-                      )}
                     </div>
 
-                    {/* Details loading / content */}
                     {loadingDetails ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                       </div>
                     ) : details ? (
                       <>
-                        {/* Professors */}
+                        <Separator className="bg-border/60" />
                         {details.professors.length > 0 && (
-                          <div>
-                            <h4 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                          <div className="space-y-1.5">
+                            <h4 className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                               <Users className="h-3.5 w-3.5" />
-                              Professors ({details.professors.length})
+                              Professors
                             </h4>
-                            <div className="space-y-1.5">
-                              {details.professors.map(prof => (
-                                <div key={prof.id} className="rounded-lg border p-2.5 overflow-hidden">
-                                  <p className="text-sm font-medium truncate">
+                            <div className="space-y-1.5 min-w-0">
+                              {details.professors.map((prof) => (
+                                <div key={prof.id} className="rounded-lg border border-border/50 bg-background/80 px-3 py-2 text-sm min-w-0 overflow-hidden">
+                                  <p className="font-medium text-foreground break-words">
                                     {[prof.title, prof.first_name, prof.last_name].filter(Boolean).join(' ')}
                                   </p>
                                   {prof.department && (
-                                    <p className="text-xs text-muted-foreground truncate">{prof.department}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5 break-words">{prof.department}</p>
                                   )}
                                   {prof.email && (
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1 truncate">
-                                      <Mail className="h-3 w-3 shrink-0" />
-                                      <span className="truncate">{prof.email}</span>
+                                    <p className="text-xs text-muted-foreground flex items-start gap-1.5 mt-1 min-w-0">
+                                      <Mail className="h-3 w-3 shrink-0 mt-0.5" />
+                                      <span className="break-all min-w-0">{prof.email}</span>
                                     </p>
                                   )}
                                 </div>
@@ -298,62 +505,104 @@ export function AddLectureDialog({ open, onClose, lectures, onSelect, excludeIds
                           </div>
                         )}
 
-                        {/* Schedules */}
-                        {details.schedules.length > 0 && (
-                          <div>
-                            <h4 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                              <Clock className="h-3.5 w-3.5" />
-                              Schedule ({details.schedules.length})
-                            </h4>
+                        {details.schedules.length > 0 && (() => {
+                          const hasFrequency = details.schedules.some((s) => s.frequency)
+                          const hasDateRange = details.schedules.some((s) => s.date_range)
+                          const hasLocation = details.schedules.some((s) => s.location)
+                          const hasRoomUrl = details.schedules.some((s) => s.room_url)
+                          return (
                             <div className="space-y-1.5">
-                              {details.schedules.map(schedule => (
-                                <div key={schedule.id} className="rounded-lg border p-2.5 text-sm overflow-hidden">
-                                  {schedule.day_time && (
-                                    <p className="font-medium truncate">{schedule.day_time}</p>
-                                  )}
-                                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-muted-foreground">
-                                    {schedule.frequency && <span>{schedule.frequency}</span>}
-                                    {schedule.date_range && <span>{schedule.date_range}</span>}
-                                    {schedule.location && (
-                                      <span className="flex items-center gap-0.5">
-                                        <MapPin className="h-3 w-3" />
-                                        {schedule.location}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+                              <h4 className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                <Clock className="h-3.5 w-3.5" />
+                                Schedule
+                              </h4>
+                              <div className="rounded-lg border border-border/50 overflow-hidden bg-background/80 min-w-0">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Day &amp; Time</TableHead>
+                                      {hasFrequency && <TableHead>Frequency</TableHead>}
+                                      {hasDateRange && <TableHead>Date Range</TableHead>}
+                                      {hasLocation && <TableHead>Location</TableHead>}
+                                      {hasRoomUrl && <TableHead>Room</TableHead>}
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {details.schedules.map((schedule) => (
+                                      <TableRow key={schedule.id}>
+                                        <TableCell className="font-medium text-sm min-w-0 break-words">
+                                          {schedule.day_time ?? '—'}
+                                        </TableCell>
+                                        {hasFrequency && (
+                                          <TableCell className="text-sm text-muted-foreground min-w-0 break-words">
+                                            {schedule.frequency ?? '—'}
+                                          </TableCell>
+                                        )}
+                                        {hasDateRange && (
+                                          <TableCell className="text-sm text-muted-foreground min-w-0 break-words">
+                                            {schedule.date_range ?? '—'}
+                                          </TableCell>
+                                        )}
+                                        {hasLocation && (
+                                          <TableCell className="text-sm text-muted-foreground min-w-0">
+                                            <span className="flex items-center gap-1 break-words">
+                                              <MapPin className="h-3 w-3 shrink-0" />
+                                              {schedule.location ?? '—'}
+                                            </span>
+                                          </TableCell>
+                                        )}
+                                        {hasRoomUrl && (
+                                          <TableCell className="text-sm">
+                                            {schedule.room_url ? (
+                                              <a
+                                                href={schedule.room_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                                              >
+                                                <ExternalLink className="h-3 w-3" />
+                                                Room
+                                              </a>
+                                            ) : (
+                                              '—'
+                                            )}
+                                          </TableCell>
+                                        )}
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )
+                        })()}
 
-                        {/* Study Programs */}
                         {details.studyPrograms.length > 0 && (
-                          <div>
-                            <h4 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                              Study Programs ({details.studyPrograms.length})
+                          <div className="space-y-1.5">
+                            <h4 className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              Study programs
                             </h4>
-                            <div className="space-y-1">
-                              {details.studyPrograms.map(program => (
-                                <div key={program.id} className="flex items-center gap-2 text-sm px-2.5 py-1.5 rounded-md min-w-0">
-                                  <span className="font-medium truncate min-w-0">{program.name}</span>
-                                  <Badge variant="secondary" className="text-[10px] shrink-0">{program.degree_type}</Badge>
+                            <div className="space-y-1.5 min-w-0">
+                              {details.studyPrograms.map((program) => (
+                                <div
+                                  key={program.id}
+                                  className="flex items-start gap-2 text-sm px-3 py-2 rounded-lg border border-border/50 bg-background/80 min-w-0"
+                                >
+                                  <span className="font-medium min-w-0 text-foreground break-words flex-1">{program.name}</span>
+                                  <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
+                                    {program.degree_type}
+                                  </Badge>
                                 </div>
                               ))}
                             </div>
                           </div>
-                        )}
-
-                        {/* Empty state when no extra details */}
-                        {details.professors.length === 0 && details.schedules.length === 0 && details.studyPrograms.length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">No additional details available</p>
                         )}
                       </>
                     ) : null}
                   </>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
       </div>

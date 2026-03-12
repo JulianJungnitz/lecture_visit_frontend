@@ -7,11 +7,11 @@ import { cn } from '@/lib/utils'
 import { KanbanCard, type KanbanItem } from './kanban-card'
 
 const STATUS_COLORS: Record<string, string> = {
-  Open: 'bg-blue-500',
-  Contacted: 'bg-amber-500',
-  Scheduled: 'bg-violet-500',
-  Done: 'bg-emerald-500',
+  'Not Contacted': 'bg-muted-foreground/70',
+  Emailed: 'bg-amber-500',
+  Confirmed: 'bg-emerald-500',
   Declined: 'bg-red-500',
+  Done: 'bg-foreground/80',
 }
 
 type Props = {

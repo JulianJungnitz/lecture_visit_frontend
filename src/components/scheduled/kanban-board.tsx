@@ -21,7 +21,7 @@ import { KanbanColumn } from './kanban-column'
 import { KanbanCard, type KanbanItem } from './kanban-card'
 import { AddLectureDialog } from './add-lecture-dialog'
 import { LectureDetailPanel } from './lecture-detail-panel'
-import { updateLectureStatus } from '@/app/actions/lecture-board'
+import { updateLectureStatus, addLectureToBoard } from '@/app/actions/lecture-board'
 import type { Lecture, University, Profile, OutreachStatus } from '@/types/database'
 
 type LectureWithUniversityAndOwner = Lecture & {
@@ -77,6 +77,8 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
   const [selectedLecture, setSelectedLecture] = useState<LectureWithUniversityAndOwner | null>(null)
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const dragOriginColumnRef = useRef<Status | null>(null)
+  const [addingToBoard, setAddingToBoard] = useState(false)
 
   useEffect(() => {
     const newColumns: Columns = {
@@ -154,8 +156,10 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
   )
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
-  }, [])
+    const id = event.active.id as string
+    setActiveId(id)
+    dragOriginColumnRef.current = findColumn(id) ?? null
+  }, [findColumn])
 
   const handleDragOver = useCallback(
     (event: DragOverEvent) => {
@@ -192,36 +196,47 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      const originColumn = dragOriginColumnRef.current
       setActiveId(null)
+      dragOriginColumnRef.current = null
+
       const { active, over } = event
       if (!over) return
 
-      const activeCol = findColumn(String(active.id))
-      const overCol = findColumn(String(over.id))
-      if (!activeCol || !overCol) return
+      const currentCol = findColumn(String(active.id))
+      if (!currentCol) return
 
-      const draggedItem = columns[activeCol].find(item => item.id === active.id)
-      if (!draggedItem) return
+      // Use the origin column ref to detect cross-column moves,
+      // since handleDragOver already moved the item in state.
+      if (originColumn && originColumn !== currentCol) {
+        const draggedItem = columns[currentCol].find(item => item.id === active.id)
+        if (!draggedItem) return
 
-      const lectureId = draggedItem.lecture.id
-
-      if (activeCol !== overCol) {
         try {
-          const dbStatus = statusToDbEnum[overCol]
-          await updateLectureStatus(lectureId, dbStatus)
+          const dbStatus = statusToDbEnum[currentCol]
+          await updateLectureStatus(draggedItem.lecture.id, dbStatus)
         } catch (error) {
           console.error('Failed to update lecture status:', error)
-          return
+            setColumns((prev) => {
+            const fromItems = [...prev[currentCol]]
+            const idx = fromItems.findIndex((i) => i.id === active.id)
+            if (idx === -1) return prev
+            const [moved] = fromItems.splice(idx, 1)
+            moved.lecture = { ...moved.lecture, outreach_status: statusToDbEnum[originColumn] }
+            return {
+              ...prev,
+              [currentCol]: fromItems,
+              [originColumn]: [...prev[originColumn], moved],
+            }
+          })
         }
-      }
-
-      if (activeCol === overCol) {
+      } else if (currentCol && over) {
         setColumns((prev) => {
-          const items = [...prev[activeCol]]
+          const items = [...prev[currentCol]]
           const oldIndex = items.findIndex((i) => i.id === active.id)
           const newIndex = items.findIndex((i) => i.id === over.id)
           if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev
-          return { ...prev, [activeCol]: arrayMove(items, oldIndex, newIndex) }
+          return { ...prev, [currentCol]: arrayMove(items, oldIndex, newIndex) }
         })
       }
     },
@@ -254,6 +269,20 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     setIsPanelOpen(false)
     setTimeout(() => setSelectedLecture(null), 300)
   }, [])
+
+  const handleAddToBoardFromPanel = useCallback(
+    async (lecture: LectureWithUniversityAndOwner) => {
+      setAddingToBoard(true)
+      try {
+        await addLectureToBoard(lecture.id)
+        handleAddLecture(lecture)
+        handleClosePanel()
+      } finally {
+        setAddingToBoard(false)
+      }
+    },
+    [handleAddLecture, handleClosePanel]
+  )
 
   const activeItem = useMemo(() => {
     if (!activeId) return null
@@ -337,7 +366,6 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
       <AddLectureDialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        lectures={lectures}
         onSelect={handleAddLecture}
         excludeIds={excludeIds}
       />
@@ -347,6 +375,8 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
         open={isPanelOpen}
         onClose={handleClosePanel}
         lecture={selectedLecture}
+        onAddToBoard={handleAddToBoardFromPanel}
+        addingToBoard={addingToBoard}
       />
     </div>
   )

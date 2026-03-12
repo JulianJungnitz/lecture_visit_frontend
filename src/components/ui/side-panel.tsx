@@ -10,6 +10,7 @@ type SidePanelProps = {
   open: boolean
   onClose: () => void
   title?: string
+  headerActions?: React.ReactNode
   children: React.ReactNode
   width?: string
   className?: string
@@ -19,6 +20,7 @@ export function SidePanel({
   open,
   onClose,
   title,
+  headerActions,
   children,
   width = 'w-[600px]',
   className
@@ -78,21 +80,24 @@ export function SidePanel({
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b">
           {title && (
-            <h2 id="side-panel-title" className="text-lg font-semibold">
+            <h2 id="side-panel-title" className="text-lg font-semibold truncate min-w-0">
               {title}
             </h2>
           )}
           {!title && <div />}
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Close panel"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {headerActions}
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Close panel"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
