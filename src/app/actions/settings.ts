@@ -102,3 +102,37 @@ export async function updateUserProfile(displayName: string) {
   if (error) throw error
   revalidatePath('/settings')
 }
+
+export async function ensureActiveSemester(): Promise<void> {
+  const supabase = await createClient()
+
+  // Check if active_semester exists
+  const { data } = await supabase
+    .from('parameters')
+    .select('key')
+    .eq('key', 'active_semester')
+    .single()
+
+  if (!data) {
+    // Insert active_semester if it doesn't exist
+    await supabase
+      .from('parameters')
+      .insert({
+        key: 'active_semester',
+        value: 'SoSe 2026'
+      })
+  }
+}
+
+export async function updateActiveSemester(semester: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('parameters')
+    .update({ value: semester })
+    .eq('key', 'active_semester')
+
+  if (error) throw error
+  revalidatePath('/settings')
+  revalidatePath('/campaigns')
+}
