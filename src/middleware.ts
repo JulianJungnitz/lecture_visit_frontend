@@ -48,8 +48,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If user is logged in and visits login page, redirect to dashboard
-  if (user && request.nextUrl.pathname === '/auth/login') {
+  // If user is logged in and visits auth-only pages, redirect to dashboard
+  const authOnlyPaths = ['/auth/login', '/auth/signup', '/auth/forgot-password']
+  if (user && authOnlyPaths.includes(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = '/programs'
     return NextResponse.redirect(url)
