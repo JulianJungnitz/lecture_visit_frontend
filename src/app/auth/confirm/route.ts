@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type')
   const next = searchParams.get('next') ?? '/programs'
+  const destination = type === 'recovery' ? '/auth/reset-password' : next
 
   // Helper to create Supabase server client for this request
   function makeSupabaseClient(response: NextResponse) {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   // Helper to redirect on success, copying session cookies
   function successRedirect(response: NextResponse) {
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = next
+    redirectUrl.pathname = destination
     redirectUrl.searchParams.delete('token_hash')
     redirectUrl.searchParams.delete('type')
     redirectUrl.searchParams.delete('code')
@@ -66,6 +67,6 @@ export async function GET(request: NextRequest) {
   // If something went wrong, redirect to login with error
   const redirectUrl = request.nextUrl.clone()
   redirectUrl.pathname = '/auth/login'
-  redirectUrl.searchParams.set('error', 'Could not verify magic link. It may have expired.')
+  redirectUrl.searchParams.set('error', 'Could not verify email link. It may have expired.')
   return NextResponse.redirect(redirectUrl)
 }
