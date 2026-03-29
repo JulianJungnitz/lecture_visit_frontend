@@ -16,8 +16,9 @@ import {
 import { MultiFilterSelect } from '@/components/multi-filter-select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
-import { X, Search, Plus, Loader2, Mail, ExternalLink, Clock, Users, MapPin } from 'lucide-react'
+import { X, Search, Plus, Loader2, Mail, ExternalLink, Clock, Users, MapPin, Star, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { addLectureToBoard } from '@/app/actions/lecture-board'
 import {
@@ -56,7 +57,7 @@ export function AddLectureDialog({
   const [dayFilter, setDayFilter] = useState<string>('')
   const [universityId, setUniversityId] = useState<string>('')
   const [starredFilter, setStarredFilter] = useState<'all' | 'starred'>('starred')
-  const [lectureTypeNames, setLectureTypeNames] = useState<string[]>([])
+  const [lecturesOnly, setLecturesOnly] = useState(true)
   const [studyProgramNames, setStudyProgramNames] = useState<string[]>([])
   const [results, setResults] = useState<LectureWithUniversity[]>([])
   const [loading, setLoading] = useState(false)
@@ -66,9 +67,9 @@ export function AddLectureDialog({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [details, setDetails] = useState<LectureDetails | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [ready, setReady] = useState(false)
   const titleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const defaultTypeFilterAppliedRef = useRef(false)
 
   const fetchDetails = useCallback(async (lectureId: string) => {
     setLoadingDetails(true)
@@ -107,26 +108,44 @@ export function AddLectureDialog({
     }
   }, [titleSearch])
 
-  // Load filter options when dialog opens
+  // Combined initialization: reset state + load filter options (fixes race condition)
   useEffect(() => {
     if (!open) {
-      defaultTypeFilterAppliedRef.current = false
+      setReady(false)
       return
     }
-    setFilterOptionsLoading(true)
-    getAddLectureFilterOptions()
-      .then((opts) => {
-        setFilterOptions(opts)
-        // Default to "lectures" (Vorlesung/lecture) when options first load
-        if (!defaultTypeFilterAppliedRef.current && opts.lectureTypes?.length) {
-          defaultTypeFilterAppliedRef.current = true
-          const lectureOnly = opts.lectureTypes.filter((t) => /vorlesung|lecture/i.test(t))
-          if (lectureOnly.length > 0) {
-            setLectureTypeNames(lectureOnly)
-          }
-        }
-      })
-      .finally(() => setFilterOptionsLoading(false))
+
+    let cancelled = false
+
+    setTitleSearch('')
+    setTitleDebounced('')
+    setLocationFilter('')
+    setDayFilter('')
+    setUniversityId('')
+    setStarredFilter('starred')
+    setLecturesOnly(true)
+    setStudyProgramNames([])
+    setSelectedId(null)
+    setDetails(null)
+    setReady(false)
+    setTimeout(() => inputRef.current?.focus(), 0)
+
+    if (filterOptions) {
+      setReady(true)
+    } else {
+      setFilterOptionsLoading(true)
+      getAddLectureFilterOptions()
+        .then((opts) => {
+          if (cancelled) return
+          setFilterOptions(opts)
+          setReady(true)
+        })
+        .finally(() => {
+          if (!cancelled) setFilterOptionsLoading(false)
+        })
+    }
+
+    return () => { cancelled = true }
   }, [open])
 
   // Run search when filters or excludeIds change
@@ -140,8 +159,13 @@ export function AddLectureDialog({
             .filter((id): id is string => id != null)
         : undefined
     const isStarred = starredFilter === 'starred' ? true : undefined
-    const lectureTypes =
-      lectureTypeNames.length > 0 ? lectureTypeNames : undefined
+    let lectureTypes: string[] | undefined = undefined
+    if (lecturesOnly && filterOptions) {
+      const onlyTypes = filterOptions.lectureTypes.filter((t) => /vorlesung|lecture/i.test(t))
+      if (onlyTypes.length > 0) {
+        lectureTypes = onlyTypes
+      }
+    }
 
     try {
       const data = await searchLecturesForBoard({
@@ -166,33 +190,16 @@ export function AddLectureDialog({
     dayFilter,
     universityId,
     starredFilter,
-    lectureTypeNames,
+    lecturesOnly,
     studyProgramNames,
     filterOptions,
     excludeIds,
   ])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !ready) return
     runSearch()
-  }, [open, runSearch])
-
-  // Reset local state when dialog opens (defaults for starred/type applied in filter-options effect)
-  useEffect(() => {
-    if (open) {
-      setTitleSearch('')
-      setTitleDebounced('')
-      setLocationFilter('')
-      setDayFilter('')
-      setUniversityId('')
-      setStarredFilter('starred')
-      setLectureTypeNames([])
-      setStudyProgramNames([])
-      setSelectedId(null)
-      setDetails(null)
-      setTimeout(() => inputRef.current?.focus(), 0)
-    }
-  }, [open])
+  }, [open, ready, runSearch])
 
   const selectedLecture = results.find((l) => l.id === selectedId) ?? null
 
@@ -223,7 +230,7 @@ export function AddLectureDialog({
       <div
         className={cn(
           'relative z-50 w-full h-[calc(84vh)] rounded-2xl border border-border/70 bg-background shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] animate-fade-in-up flex transition-all duration-200 overflow-hidden',
-          selectedId ? 'max-w-7xl flex-row' : 'max-w-4xl flex-col'
+          selectedId ? 'max-w-7xl flex-row' : 'max-w-5xl flex-col'
         )}
       >
         {/* Left: header + filters + list */}
@@ -244,7 +251,7 @@ export function AddLectureDialog({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-4">
+            <div className="flex items-center gap-2 mt-4">
               <div className="flex items-center h-9 gap-2 flex-1 min-w-[140px] max-w-full">
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
@@ -303,32 +310,32 @@ export function AddLectureDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={starredFilter}
-                onValueChange={(v) => setStarredFilter(v as 'all' | 'starred')}
-              >
-                <SelectTrigger className="w-[8.5rem] h-9 text-sm shrink-0 border-border/70 bg-muted/30 rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="starred">Starred only</SelectItem>
-                </SelectContent>
-              </Select>
-              <MultiFilterSelect
-                label="Type"
-                options={filterOptions?.lectureTypes ?? []}
-                selected={lectureTypeNames}
-                onChange={setLectureTypeNames}
-                className="w-[10rem] shrink-0"
-              />
               <MultiFilterSelect
                 label="Study program"
                 options={studyProgramOptions}
                 selected={studyProgramNames}
                 onChange={setStudyProgramNames}
-                className="w-[12rem] shrink-0"
+                className="w-[11rem] shrink-0 [&_button]:border-border/70 [&_button]:bg-muted/30 [&_button]:rounded-lg"
               />
+              <Button
+                variant={starredFilter === 'starred' ? 'default' : 'outline'}
+                size="sm"
+                className="h-9 px-3"
+                onClick={() => setStarredFilter((prev) => prev === 'starred' ? 'all' : 'starred')}
+                title={starredFilter === 'starred' ? 'Show all lectures' : 'Show starred only'}
+              >
+                <Star className={`h-4 w-4${starredFilter === 'starred' ? ' fill-current' : ''}`} />
+              </Button>
+              <Button
+                variant={lecturesOnly ? 'default' : 'outline'}
+                size="sm"
+                className="h-9 px-3"
+                onClick={() => setLecturesOnly((prev) => !prev)}
+                title={lecturesOnly ? 'Show all types' : 'Show lectures only'}
+              >
+                <BookOpen className="h-4 w-4 mr-1" />
+                Lectures only
+              </Button>
             </div>
           </div>
 

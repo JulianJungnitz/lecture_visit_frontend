@@ -102,7 +102,7 @@ export function MultiFilterSelect({ label, options, selected, onChange, classNam
         onClick={handleToggle}
         className={cn(
           'flex h-9 w-full items-center justify-between gap-1 whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring',
-          localSelected.length > 0 ? 'text-foreground' : 'text-muted-foreground'
+          'text-foreground'
         )}
       >
         <span className="truncate">{displayLabel}</span>
@@ -115,7 +115,7 @@ export function MultiFilterSelect({ label, options, selected, onChange, classNam
           style={{ position: 'fixed', top: pos.top, left: pos.left, width: DROPDOWN_WIDTH }}
           className="z-[100] max-h-60 overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95"
         >
-          {options.map(option => {
+          {[...new Set(options)].map(option => {
             const isSelected = localSelected.includes(option)
             return (
               <button

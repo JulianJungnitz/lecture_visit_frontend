@@ -7,14 +7,14 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   {
-    title: 'Campaign',
-    href: '/campaigns',
-    icon: Target
-  },
-  {
     title: 'Schedule',
     href: '/scheduled',
     icon: Send
+  },
+  {
+    title: 'Campaign',
+    href: '/campaigns',
+    icon: Target
   },
   {
     title: 'Programs',
