@@ -75,6 +75,22 @@ export default async function ProgramsPage({
   const totalCount = count ?? 0
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
+  const starredCounts: Record<string, number> = {}
+  const programIds = programs.map(p => p.id)
+  if (programIds.length > 0) {
+    const { data: lectureLinks } = await supabase
+      .from('lecture_study_programs')
+      .select('study_program_id, lecture:lectures(is_starred)')
+      .in('study_program_id', programIds)
+
+    for (const link of lectureLinks ?? []) {
+      const lec = (link as unknown as { study_program_id: string; lecture: { is_starred: boolean | null } | null }).lecture
+      if (lec?.is_starred) {
+        starredCounts[link.study_program_id] = (starredCounts[link.study_program_id] ?? 0) + 1
+      }
+    }
+  }
+
   return (
     <div className="animate-fade-in-up">
       <div className="mb-6">
@@ -89,6 +105,7 @@ export default async function ProgramsPage({
         totalCount={totalCount}
         page={page}
         totalPages={totalPages}
+        starredCounts={starredCounts}
       />
     </div>
   )

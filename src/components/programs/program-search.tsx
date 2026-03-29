@@ -22,6 +22,7 @@ interface ProgramSearchProps {
   totalCount: number
   page: number
   totalPages: number
+  starredCounts: Record<string, number>
 }
 
 export function ProgramSearch({
@@ -32,6 +33,7 @@ export function ProgramSearch({
   totalCount,
   page,
   totalPages,
+  starredCounts,
 }: ProgramSearchProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -164,6 +166,10 @@ export function ProgramSearch({
                     <Badge variant="secondary" className="text-xs">
                       {program.degree_type}
                     </Badge>
+                    <span className="ml-auto flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+                      <Star className={`h-3 w-3 ${(starredCounts[program.id] ?? 0) > 0 ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground/30'}`} />
+                      {starredCounts[program.id] ?? 0} starred
+                    </span>
                   </div>
                   {program.category && (
                     <p className="mt-1 text-xs text-muted-foreground pl-6">{program.category}</p>

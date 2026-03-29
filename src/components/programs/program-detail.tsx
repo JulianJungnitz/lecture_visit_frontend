@@ -126,20 +126,22 @@ export function ProgramDetail({ program, lectures }: ProgramDetailProps) {
             />
           ) : (
             <div className="space-y-6 pr-4">
-              {(['mandatory', 'elective', null] as const).map(obligation => {
+              {([
+                { key: 'starred', label: 'Starred', filter: (l: LectureWithObligation) => !!l.is_starred },
+                { key: 'mandatory', label: 'Mandatory', filter: (l: LectureWithObligation) => l.lecture_obligation === 'mandatory' },
+                { key: 'elective', label: 'Elective', filter: (l: LectureWithObligation) => l.lecture_obligation === 'elective' },
+                { key: 'unknown', label: 'Unknown', filter: (l: LectureWithObligation) => l.lecture_obligation !== 'mandatory' && l.lecture_obligation !== 'elective' },
+              ] as const).map(({ key, label, filter }) => {
                 const group = assignedLectures.filter(l => {
                   if (lectureTypeOnly) {
                     const t = (l.lecture_type ?? '').toLowerCase()
                     if (!t.includes('lecture') && !t.includes('vorlesung')) return false
                   }
-                  return obligation === null
-                    ? l.lecture_obligation !== 'mandatory' && l.lecture_obligation !== 'elective'
-                    : l.lecture_obligation === obligation
+                  return filter(l)
                 })
                 if (group.length === 0) return null
-                const label = obligation === 'mandatory' ? 'Mandatory' : obligation === 'elective' ? 'Elective' : 'Unknown'
                 return (
-                  <div key={label}>
+                  <div key={key}>
                     <button
                       type="button"
                       onClick={() => setCollapsed(prev => ({ ...prev, [label]: !prev[label] }))}
