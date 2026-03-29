@@ -1,8 +1,6 @@
 import { User } from 'lucide-react'
-import { SemesterSelector } from '@/components/semester-selector'
 import { SignOutButton } from '@/components/sign-out-button'
 import { createClient } from '@/lib/supabase/server'
-import { Suspense } from 'react'
 import { SidebarNav } from '@/components/sidebar-nav'
 export async function Sidebar() {
   const supabase = await createClient()
@@ -18,12 +16,6 @@ export async function Sidebar() {
         <span className="font-semibold text-sm tracking-tight text-foreground">Lecture Visit Tool</span>
       </div>
       <SidebarNav />
-      <div className="px-4 py-3 border-t border-black/[0.06]">
-        <p className="text-xs text-muted-foreground mb-2">Semester</p>
-        <Suspense>
-          <SemesterSelector />
-        </Suspense>
-      </div>
       {user && (
         <div className="px-4 py-3 border-t border-black/[0.06]">
           <div className="flex items-center gap-2 mb-2">

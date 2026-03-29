@@ -22,6 +22,7 @@ export default async function SettingsPage() {
     .order('key')
 
   const activeSemester = parameters?.find(p => p.key === 'active_semester')?.value ?? 'SoSe 2026'
+  const filteredParameters = (parameters ?? []).filter(p => p.key !== 'active_semester')
 
   return (
     <div className="animate-fade-in-up">
@@ -35,7 +36,7 @@ export default async function SettingsPage() {
       <div className="space-y-6">
         <ProfileSettings profile={profile} />
         <ActiveSemesterSettings activeSemester={activeSemester} />
-        <SettingsTable parameters={parameters ?? []} />
+        <SettingsTable parameters={filteredParameters} />
       </div>
     </div>
   )

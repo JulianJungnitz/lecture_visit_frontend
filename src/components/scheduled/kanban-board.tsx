@@ -21,7 +21,7 @@ import { KanbanColumn } from './kanban-column'
 import { KanbanCard, type KanbanItem } from './kanban-card'
 import { AddLectureDialog } from './add-lecture-dialog'
 import { LectureDetailPanel } from './lecture-detail-panel'
-import { updateLectureStatus, addLectureToBoard } from '@/app/actions/lecture-board'
+import { updateLectureStatus, addLectureToBoard, removeLectureFromBoard } from '@/app/actions/lecture-board'
 import type { Lecture, University, Profile, OutreachStatus } from '@/types/database'
 
 type LectureWithUniversityAndOwner = Lecture & {
@@ -260,6 +260,84 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     }))
   }, [currentUserId])
 
+  const handleMoveItem = useCallback(async (itemId: string, targetStatus: Status) => {
+    const sourceStatus = findColumn(itemId)
+    if (!sourceStatus || sourceStatus === targetStatus) return
+
+    const item = columns[sourceStatus].find(i => i.id === itemId)
+    if (!item) return
+
+    const dbStatus = statusToDbEnum[targetStatus]
+
+    setColumns((prev) => {
+      const fromItems = prev[sourceStatus].filter(i => i.id !== itemId)
+      const movedItem = { ...item, lecture: { ...item.lecture, outreach_status: dbStatus } }
+      return { ...prev, [sourceStatus]: fromItems, [targetStatus]: [...prev[targetStatus], movedItem] }
+    })
+
+    try {
+      await updateLectureStatus(item.lecture.id, dbStatus)
+    } catch (error) {
+      console.error('Failed to update lecture status:', error)
+      setColumns((prev) => {
+        const toItems = prev[targetStatus].filter(i => i.id !== itemId)
+        const restored = { ...item, lecture: { ...item.lecture, outreach_status: statusToDbEnum[sourceStatus] } }
+        return { ...prev, [targetStatus]: toItems, [sourceStatus]: [...prev[sourceStatus], restored] }
+      })
+    }
+  }, [findColumn, columns])
+
+  const handleRemoveItem = useCallback(async (itemId: string) => {
+    const sourceStatus = findColumn(itemId)
+    if (!sourceStatus) return
+
+    const item = columns[sourceStatus].find(i => i.id === itemId)
+    if (!item) return
+
+    setColumns((prev) => ({
+      ...prev,
+      [sourceStatus]: prev[sourceStatus].filter(i => i.id !== itemId),
+    }))
+
+    try {
+      await removeLectureFromBoard(item.lecture.id)
+    } catch (error) {
+      console.error('Failed to remove lecture from board:', error)
+      setColumns((prev) => ({
+        ...prev,
+        [sourceStatus]: [...prev[sourceStatus], item],
+      }))
+    }
+  }, [findColumn, columns])
+
+  const handleMarkDone = useCallback(async (itemId: string, estimatedAttendees: number | null) => {
+    const sourceStatus = findColumn(itemId)
+    if (!sourceStatus) return
+
+    const item = columns[sourceStatus].find(i => i.id === itemId)
+    if (!item) return
+
+    const targetStatus: Status = 'Done'
+    const dbStatus = statusToDbEnum[targetStatus]
+
+    setColumns((prev) => {
+      const fromItems = prev[sourceStatus].filter(i => i.id !== itemId)
+      const movedItem = { ...item, lecture: { ...item.lecture, outreach_status: dbStatus, estimated_attendees: estimatedAttendees } }
+      return { ...prev, [sourceStatus]: fromItems, [targetStatus]: [...prev[targetStatus], movedItem] }
+    })
+
+    try {
+      await updateLectureStatus(item.lecture.id, dbStatus, estimatedAttendees)
+    } catch (error) {
+      console.error('Failed to mark lecture as done:', error)
+      setColumns((prev) => {
+        const toItems = prev[targetStatus].filter(i => i.id !== itemId)
+        const restored = { ...item, lecture: { ...item.lecture, outreach_status: statusToDbEnum[sourceStatus] } }
+        return { ...prev, [targetStatus]: toItems, [sourceStatus]: [...prev[sourceStatus], restored] }
+      })
+    }
+  }, [findColumn, columns])
+
   const handleCardClick = useCallback((item: KanbanItem) => {
     setSelectedLecture(item.lecture)
     setIsPanelOpen(true)
@@ -347,6 +425,9 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
               title={status}
               items={filteredColumns[status]}
               onCardClick={handleCardClick}
+              onMoveItem={view === 'personal' ? handleMoveItem : undefined}
+              onRemoveItem={view === 'personal' ? handleRemoveItem : undefined}
+              onMarkDone={view === 'personal' ? handleMarkDone : undefined}
               showOwner={view === 'all'}
             />
           ))}

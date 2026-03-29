@@ -19,10 +19,13 @@ type Props = {
   title: string
   items: KanbanItem[]
   onCardClick?: (item: KanbanItem) => void
+  onMoveItem?: (itemId: string, targetStatus: string) => void
+  onRemoveItem?: (itemId: string) => void
+  onMarkDone?: (itemId: string, estimatedAttendees: number | null) => void
   showOwner?: boolean
 }
 
-export function KanbanColumn({ id, title, items, onCardClick, showOwner = false }: Props) {
+export function KanbanColumn({ id, title, items, onCardClick, onMoveItem, onRemoveItem, onMarkDone, showOwner = false }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id })
 
   return (
@@ -43,7 +46,7 @@ export function KanbanColumn({ id, title, items, onCardClick, showOwner = false 
       >
         <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
           {items.map((item) => (
-            <KanbanCard key={item.id} item={item} onCardClick={onCardClick} showOwner={showOwner} />
+            <KanbanCard key={item.id} item={item} onCardClick={onCardClick} onMoveItem={onMoveItem} onRemoveItem={onRemoveItem} onMarkDone={onMarkDone} columnStatus={title} showOwner={showOwner} />
           ))}
         </SortableContext>
       </div>

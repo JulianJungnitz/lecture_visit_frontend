@@ -43,6 +43,8 @@ export type Lecture = {
   notes: string | null
   owner: string | null
   outreach_status: OutreachStatus | null
+  estimated_attendees: number | null
+  ics_uid: string | null
 }
 
 export type ProfessorGender = 'male' | 'female' | 'other' | 'unknown'

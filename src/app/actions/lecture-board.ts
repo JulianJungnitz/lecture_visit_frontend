@@ -26,19 +26,24 @@ export async function addLectureToBoard(lectureId: string) {
 
 export async function updateLectureStatus(
   lectureId: string,
-  status: OutreachStatus
+  status: OutreachStatus,
+  estimatedAttendees?: number | null
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) throw new Error('Not authenticated')
 
-  // Update the outreach_status field
+  const updateData: Record<string, unknown> = { outreach_status: status }
+  if (estimatedAttendees !== undefined) {
+    updateData.estimated_attendees = estimatedAttendees
+  }
+
   const { error } = await supabase
     .from('lectures')
-    .update({ outreach_status: status })
+    .update(updateData)
     .eq('id', lectureId)
-    .eq('owner', user.id)  // Only allow updating lectures owned by current user
+    .eq('owner', user.id)
 
   if (error) throw error
 
