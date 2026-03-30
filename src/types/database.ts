@@ -45,6 +45,9 @@ export type Lecture = {
   outreach_status: OutreachStatus | null
   estimated_attendees: number | null
   ics_uid: string | null
+  visit_assigned_to: string | null
+  visit_scheduled_for: string | null
+  contacted_at: string | null
 }
 
 export type ProfessorGender = 'male' | 'female' | 'other' | 'unknown'
@@ -112,6 +115,7 @@ export type ProfessorWithUniversity = Professor & {
 export type Profile = {
   id: string
   display_name: string | null
+  email: string | null
   is_admin: boolean | null
   created_at: string
   updated_at: string

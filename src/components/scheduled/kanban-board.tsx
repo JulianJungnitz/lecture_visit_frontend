@@ -23,6 +23,8 @@ import { AddLectureDialog } from './add-lecture-dialog'
 import { LectureDetailPanel } from './lecture-detail-panel'
 import { updateLectureStatus, addLectureToBoard, removeLectureFromBoard } from '@/app/actions/lecture-board'
 import type { Lecture, University, Profile, OutreachStatus } from '@/types/database'
+import type { ExtrapolatedDate } from '@/lib/date-utils'
+import { useToast } from '@/hooks/use-toast'
 
 type LectureWithUniversityAndOwner = Lecture & {
   university?: University | null
@@ -79,6 +81,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const dragOriginColumnRef = useRef<Status | null>(null)
   const [addingToBoard, setAddingToBoard] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
     const newColumns: Columns = {
@@ -214,9 +217,23 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
 
         try {
           const dbStatus = statusToDbEnum[currentCol]
-          await updateLectureStatus(draggedItem.lecture.id, dbStatus)
+          const result = await updateLectureStatus(draggedItem.lecture.id, dbStatus)
+
+          // Show warning if calendar operation failed
+          if (result.warning) {
+            toast({
+              title: 'Calendar Warning',
+              description: result.warning,
+              variant: 'destructive',
+            })
+          }
         } catch (error) {
           console.error('Failed to update lecture status:', error)
+          toast({
+            title: 'Error',
+            description: 'Failed to update lecture status. Please try again.',
+            variant: 'destructive',
+          })
             setColumns((prev) => {
             const fromItems = [...prev[currentCol]]
             const idx = fromItems.findIndex((i) => i.id === active.id)
@@ -247,6 +264,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     const lectureWithUpdates = {
       ...lecture,
       owner: currentUserId || lecture.owner,
+      visit_assigned_to: currentUserId || lecture.visit_assigned_to,
       outreach_status: 'not_contacted' as const
     }
 
@@ -260,7 +278,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     }))
   }, [currentUserId])
 
-  const handleMoveItem = useCallback(async (itemId: string, targetStatus: Status) => {
+  const handleMoveItem = useCallback(async (itemId: string, targetStatus: Status, visitScheduledFor?: ExtrapolatedDate) => {
     const sourceStatus = findColumn(itemId)
     if (!sourceStatus || sourceStatus === targetStatus) return
 
@@ -276,16 +294,47 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     })
 
     try {
-      await updateLectureStatus(item.lecture.id, dbStatus)
+      let visitScheduledForIso: string | undefined
+      let durationMinutes: number | undefined
+
+      if (visitScheduledFor) {
+        // Combine date with startTime to get the actual lecture time
+        const [startHours, startMinutes] = visitScheduledFor.startTime.split(':').map(Number)
+        const scheduledDate = new Date(visitScheduledFor.date)
+        scheduledDate.setHours(startHours, startMinutes, 0, 0)
+        visitScheduledForIso = scheduledDate.toISOString()
+
+        // Calculate duration in minutes from start and end times
+        const [endHours, endMinutes] = visitScheduledFor.endTime.split(':').map(Number)
+        const startTotalMinutes = startHours * 60 + startMinutes
+        const endTotalMinutes = endHours * 60 + endMinutes
+        durationMinutes = endTotalMinutes - startTotalMinutes
+      }
+
+      const result = await updateLectureStatus(item.lecture.id, dbStatus, undefined, visitScheduledForIso, durationMinutes)
+
+      // Show warning if calendar operation failed
+      if (result.warning) {
+        toast({
+          title: 'Calendar Warning',
+          description: result.warning,
+          variant: 'destructive',
+        })
+      }
     } catch (error) {
       console.error('Failed to update lecture status:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update lecture status. Please try again.',
+        variant: 'destructive',
+      })
       setColumns((prev) => {
         const toItems = prev[targetStatus].filter(i => i.id !== itemId)
         const restored = { ...item, lecture: { ...item.lecture, outreach_status: statusToDbEnum[sourceStatus] } }
-        return { ...prev, [targetStatus]: toItems, [sourceStatus]: [...prev[sourceStatus], restored] }
+        return { ...prev, [targetStatus]: toItems, [sourceSource]: [...prev[sourceStatus], restored] }
       })
     }
-  }, [findColumn, columns])
+  }, [findColumn, columns, toast])
 
   const handleRemoveItem = useCallback(async (itemId: string) => {
     const sourceStatus = findColumn(itemId)
@@ -327,13 +376,27 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
     })
 
     try {
-      await updateLectureStatus(item.lecture.id, dbStatus, estimatedAttendees)
+      const result = await updateLectureStatus(item.lecture.id, dbStatus, estimatedAttendees)
+
+      // Show warning if calendar operation failed (shouldn't happen for 'done' status)
+      if (result.warning) {
+        toast({
+          title: 'Calendar Warning',
+          description: result.warning,
+          variant: 'destructive',
+        })
+      }
     } catch (error) {
       console.error('Failed to mark lecture as done:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to mark lecture as done. Please try again.',
+        variant: 'destructive',
+      })
       setColumns((prev) => {
         const toItems = prev[targetStatus].filter(i => i.id !== itemId)
         const restored = { ...item, lecture: { ...item.lecture, outreach_status: statusToDbEnum[sourceStatus] } }
-        return { ...prev, [targetStatus]: toItems, [sourceStatus]: [...prev[sourceStatus], restored] }
+        return { ...prev, [targetStatus]: toItems, [sourceSource]: [...prev[sourceStatus], restored] }
       })
     }
   }, [findColumn, columns])

@@ -6,11 +6,11 @@ import { CSS } from '@dnd-kit/utilities'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { User, Mail, ThumbsDown, ThumbsUp, CheckCircle, X, CalendarDays } from 'lucide-react'
+import { User, Mail, ThumbsDown, ThumbsUp, CheckCircle, X } from 'lucide-react'
 import { GenerateEmailDialog } from './generate-email-dialog'
 import { DoneDialog } from './done-dialog'
-import { CalendarBlockerDialog } from './calendar-blocker-dialog'
 import type { Lecture, University, Profile } from '@/types/database'
+import type { ExtrapolatedDate } from '@/lib/date-utils'
 
 export type KanbanItem = {
   id: string
@@ -32,7 +32,7 @@ export function KanbanCard({
 }: {
   item: KanbanItem
   onCardClick?: (item: KanbanItem) => void
-  onMoveItem?: (itemId: string, targetStatus: string) => void
+  onMoveItem?: (itemId: string, targetStatus: string, visitScheduledFor?: ExtrapolatedDate) => void
   onRemoveItem?: (itemId: string) => void
   onMarkDone?: (itemId: string, estimatedAttendees: number | null) => void
   columnStatus?: string
@@ -57,7 +57,6 @@ export function KanbanCard({
 
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [doneDialogOpen, setDoneDialogOpen] = useState(false)
-  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false)
 
   const handleClick = (e: React.MouseEvent) => {
     if (!isDragging && onCardClick) {
@@ -120,7 +119,7 @@ export function KanbanCard({
                 onClose={() => setEmailDialogOpen(false)}
                 lectureId={item.lecture.id}
                 lectureTitle={item.lecture.title}
-                onSent={() => onMoveItem(item.id, 'Emailed')}
+                onSent={(selectedDate) => onMoveItem(item.id, 'Emailed', selectedDate)}
               />
             </>
           )}
@@ -148,26 +147,12 @@ export function KanbanCard({
             <>
               <Button
                 size="sm"
-                className="h-7 text-xs gap-1 flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
-                onClick={() => setCalendarDialogOpen(true)}
-              >
-                <CalendarDays className="h-3 w-3" />
-                Calendar
-              </Button>
-              <Button
-                size="sm"
                 className="h-7 text-xs gap-1 flex-1 bg-foreground/80 hover:bg-foreground text-background"
                 onClick={() => setDoneDialogOpen(true)}
               >
                 <CheckCircle className="h-3 w-3" />
                 Done
               </Button>
-              <CalendarBlockerDialog
-                open={calendarDialogOpen}
-                onClose={() => setCalendarDialogOpen(false)}
-                lectureId={item.lecture.id}
-                lectureTitle={item.lecture.title}
-              />
               <DoneDialog
                 open={doneDialogOpen}
                 onClose={() => setDoneDialogOpen(false)}

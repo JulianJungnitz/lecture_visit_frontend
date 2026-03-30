@@ -23,7 +23,7 @@ type Props = {
   onClose: () => void
   lectureId: string
   lectureTitle: string
-  onSent: () => void
+  onSent: (selectedDate: ExtrapolatedDate) => void
 }
 
 export function GenerateEmailDialog({ open, onClose, lectureId, lectureTitle, onSent }: Props) {
@@ -140,17 +140,18 @@ export function GenerateEmailDialog({ open, onClose, lectureId, lectureTitle, on
   const ccEmails = professors.filter(p => ccIds.has(p.id) && p.email).map(p => p.email!)
 
   const mailtoHref = (() => {
-    const params = new URLSearchParams()
-    if (ccEmails.length > 0) params.set('cc', ccEmails.join(','))
-    params.set('subject', lectureTitle)
-    params.set('body', resolvedBody)
-    const qs = params.toString()
-    return `mailto:${encodeURIComponent(toEmail)}${qs ? '?' + qs : ''}`
+    const params: string[] = []
+    if (ccEmails.length > 0) params.push(`cc=${encodeURIComponent(ccEmails.join(','))}`)
+    params.push(`subject=${encodeURIComponent(lectureTitle)}`)
+    params.push(`body=${encodeURIComponent(resolvedBody)}`)
+    const qs = params.join('&')
+    return `mailto:${encodeURIComponent(toEmail)}?${qs}`
   })()
 
   const handleOpenMail = () => {
+    if (!selectedDate) return
     window.location.href = mailtoHref
-    onSent()
+    onSent(selectedDate)
     onClose()
   }
 
@@ -368,7 +369,7 @@ export function GenerateEmailDialog({ open, onClose, lectureId, lectureTitle, on
             <Button
               className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-white"
               onClick={handleOpenMail}
-              disabled={!selectedProf?.email || loading}
+              disabled={!selectedProf?.email || !selectedDate || loading}
             >
               <Mail className="h-4 w-4" />
               Open in Mail
