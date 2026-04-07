@@ -12,7 +12,7 @@ const navItems = [
     icon: Send
   },
   {
-    title: 'Campaign',
+    title: 'Overview',
     href: '/campaigns',
     icon: Target
   },
