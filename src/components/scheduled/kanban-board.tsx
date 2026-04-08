@@ -331,7 +331,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
       setColumns((prev) => {
         const toItems = prev[targetStatus].filter(i => i.id !== itemId)
         const restored = { ...item, lecture: { ...item.lecture, outreach_status: statusToDbEnum[sourceStatus] } }
-        return { ...prev, [targetStatus]: toItems, [sourceSource]: [...prev[sourceStatus], restored] }
+        return { ...prev, [targetStatus]: toItems, [sourceStatus]: [...prev[sourceStatus], restored] }
       })
     }
   }, [findColumn, columns, toast])
@@ -396,7 +396,7 @@ export function KanbanBoard({ lectures, currentUserId }: Props) {
       setColumns((prev) => {
         const toItems = prev[targetStatus].filter(i => i.id !== itemId)
         const restored = { ...item, lecture: { ...item.lecture, outreach_status: statusToDbEnum[sourceStatus] } }
-        return { ...prev, [targetStatus]: toItems, [sourceSource]: [...prev[sourceStatus], restored] }
+        return { ...prev, [targetStatus]: toItems, [sourceStatus]: [...prev[sourceStatus], restored] }
       })
     }
   }, [findColumn, columns])
