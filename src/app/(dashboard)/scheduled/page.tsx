@@ -13,10 +13,11 @@ export default async function ScheduledPage() {
   // Get current user
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Fetch lectures with owner profiles
+  // Only fetch lectures that are on the board (have an owner assigned)
   const { data } = await supabase
     .from('lectures')
     .select('*, university:universities(id, name, full_name, website), owner_profile:profiles!owner(id, display_name, created_at, updated_at)')
+    .not('owner', 'is', null)
     .order('title')
 
   const lectures: LectureWithUniversityAndOwner[] = (data as LectureWithUniversityAndOwner[]) ?? []

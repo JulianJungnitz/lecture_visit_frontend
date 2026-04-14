@@ -11,8 +11,7 @@ export async function addLectureToBoard(lectureId: string) {
 
   if (!user) throw new Error('Not authenticated')
 
-  // Set owner, assignee, and initial status on lecture
-  const { error } = await supabase
+  const { error, data } = await supabase
     .from('lectures')
     .update({
       owner: user.id,
@@ -20,8 +19,16 @@ export async function addLectureToBoard(lectureId: string) {
       outreach_status: 'not_contacted'
     })
     .eq('id', lectureId)
+    .select('id')
+    .single()
 
-  if (error) throw error
+  if (error) {
+    throw new Error(`Failed to add lecture to board: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('Lecture not found or update not permitted')
+  }
 
   revalidatePath('/scheduled')
 }
