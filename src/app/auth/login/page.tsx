@@ -50,7 +50,7 @@ export default function LoginPage() {
         setErrorMessage('Invalid email or password.')
       }
     } else {
-      router.push('/programs')
+      router.push('/scheduled')
       router.refresh()
     }
   }

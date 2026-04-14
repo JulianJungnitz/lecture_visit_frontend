@@ -62,11 +62,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // If user is logged in and visits auth-only pages, redirect to dashboard
+  // If user is logged in and visits auth-only pages, redirect to app home
   const authOnlyPaths = ['/auth/login', '/auth/signup', '/auth/forgot-password']
   if (user && authOnlyPaths.includes(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone()
-    url.pathname = '/programs'
+    url.pathname = '/scheduled'
     return NextResponse.redirect(url)
   }
 
