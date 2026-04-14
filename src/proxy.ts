@@ -2,6 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
+  // Supabase often redirects PKCE email flows to the Site URL root (`/?code=...`).
+  // Session exchange lives in `/auth/confirm` — forward so `exchangeCodeForSession` runs.
+  if (request.nextUrl.pathname === '/') {
+    const { searchParams } = request.nextUrl
+    const code = searchParams.get('code')
+    const token_hash = searchParams.get('token_hash')
+    const type = searchParams.get('type')
+    if (code || (token_hash && type)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/confirm'
+      return NextResponse.redirect(url)
+    }
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
