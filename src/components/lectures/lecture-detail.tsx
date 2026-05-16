@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { StarToggle } from '@/components/star-toggle'
+import { CopyAsPromptButton } from '@/components/lectures/copy-as-prompt-button'
+import { buildLecturePrompt } from '@/lib/lecture-prompt'
 import type { Lecture, Professor, LectureSchedule, StudyProgram, University } from '@/types/database'
 
 // Helper: format professor display name
@@ -35,13 +37,18 @@ export function LectureDetail({ lecture, professors, schedules, studyPrograms }:
   const hasLocation = schedules.some(s => s.location)
   const hasRoomUrl = schedules.some(s => s.room_url)
 
+  const prompt = buildLecturePrompt({ lecture, professors, schedules, studyPrograms })
+
   return (
     <div className="max-w-4xl space-y-8">
       {/* Header */}
       <div>
-        <div className="flex items-start gap-3 mb-2">
+        <div className="flex items-start justify-between gap-3 mb-2">
           <h1 className="text-2xl font-semibold tracking-tight leading-tight">{lecture.title}</h1>
-          <StarToggle id={lecture.id} type="lecture" initialStarred={!!lecture.is_starred} />
+          <div className="flex items-center gap-2 shrink-0">
+            <CopyAsPromptButton markdown={prompt} />
+            <StarToggle id={lecture.id} type="lecture" initialStarred={!!lecture.is_starred} />
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <UniversityBadge universityName={lecture.university.name} />
